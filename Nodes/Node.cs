@@ -1,5 +1,5 @@
-﻿using AdHocMAC.Simulation;
-using System;
+﻿using AdHocMAC.Nodes.MAC;
+using AdHocMAC.Simulation;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,58 +11,38 @@ namespace AdHocMAC.Nodes
     class Node : INode<Packet>
     {
         private readonly int mId;
-        private readonly Action<Packet> mTransmit;
+        private readonly ISendProtocol<Packet> mSendProtocol;
 
-        private readonly SemaphoreSlim mShutdownWaiter = new SemaphoreSlim(0);
-        private bool mRun = true;
-
-        public Node(int Id, Action<Packet> Transmit)
+        public Node(int Id, ISendProtocol<Packet> SendProtocol)
         {
             mId = Id;
-            mTransmit = Transmit;
+            mSendProtocol = SendProtocol;
         }
-
-        public int GetID() => mId;
-
-        // "Starts" the background thread of this node's logic.
-        public void Start() => Task.Run(Loop);
 
 
         /// <summary>
         /// This can do background work, such as coming up with random packets to send.
         /// </summary>
-        public async Task Loop()
+        public async Task Loop(CancellationToken Token)
         {
-            while (mRun)
+            while (!Token.IsCancellationRequested)
             {
                 await Task.Delay(1000);
 
                 // Send a Hello World packet to the node with ID+1.
                 Send(new Packet
                 {
-                    From = GetID(),
-                    To = GetID() + 1,
+                    From = mId,
+                    To = mId + 1,
                     Data = "Hello World!"
                 });
             }
-
-            // The loop has successfully stopped.
-            mShutdownWaiter.Release();
-        }
-
-        public async Task Stop()
-        {
-            // Tell the logic loop to stop.
-            mRun = false;
-
-            // Wait for the logic loop to actually stop.
-            await mShutdownWaiter.WaitAsync();
         }
 
         private void Send(Packet OutgoingPacket)
         {
-            // This is ALOHA. Should be replaced with CSMA/CA.
-            mTransmit(OutgoingPacket);
+            // The basic node code does not bother with how sending is handled.
+            mSendProtocol.Send(OutgoingPacket);
         }
 
         /*
@@ -70,20 +50,27 @@ namespace AdHocMAC.Nodes
          */
         public void OnReceiveStart()
         {
+            mSendProtocol.OnChannelBusy();
         }
 
         public void OnReceiveCollide()
         {
             // This one is mutually exclusive with OnReceiveSuccess.
             // Either this event happens, or the other one, but not both.
+            // For now, we can probably ignore this one.
         }
 
         public void OnReceiveSuccess(Packet IncomingPacket)
         {
+            if (IncomingPacket.To == mId && mSendProtocol.OnReceive(IncomingPacket))
+            {
+                // To-Do: What do we want to do with "good" packets?
+            }
         }
 
         public void OnReceiveEnd()
         {
+            mSendProtocol.OnChannelFree();
         }
     }
 }

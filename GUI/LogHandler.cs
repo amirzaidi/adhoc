@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Windows;
 
 namespace AdHocMAC.GUI
 {
@@ -7,10 +8,24 @@ namespace AdHocMAC.GUI
     /// </summary>
     class LogHandler
     {
-        public void OnEvent(int Node, string Message)
+        public void OnDebug(string Message)
         {
-            // To-Do: Print this in the window.
-            Debug.WriteLine($"Node {Node}: {Message}");
+            Debug.WriteLine(Message);
+        }
+
+        public void OnDebug(int Node, string Message)
+        {
+            OnDebug($"Node {Node}: {Message}");
+        }
+
+        public void OnError(string Message)
+        {
+            MessageBox.Show(Message, "An Error Occurred", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        public void OnError(int Node, string Message)
+        {
+            OnError($"Node {Node}: {Message}");
         }
     }
 }
