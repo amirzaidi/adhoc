@@ -35,7 +35,7 @@ namespace AdHocMAC.Nodes.MAC
 
         public void OnChannelFree()
         {
-            mIsChannelBusy = true;
+            mIsChannelBusy = false;
         }
     }
 }
