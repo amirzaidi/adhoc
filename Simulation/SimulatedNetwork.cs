@@ -23,7 +23,7 @@ namespace AdHocMAC.Simulation
         {
             if (!mNodes.Remove(Node))
             {
-                throw new ArgumentException($"Node to be unregistered does not exist: {Node.GetID()}");
+                throw new ArgumentException($"Node to be unregistered does not exist");
             }
         }
     }
