@@ -6,6 +6,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Shapes;
 
 namespace AdHocMAC
 {
@@ -16,7 +20,7 @@ namespace AdHocMAC
     {
         // Fields to handle showing what is happening to the user.
         private readonly LogHandler mLogHandler = new LogHandler();
-        private readonly NodeVisualizer mNodeVisualizer = new NodeVisualizer();
+        private readonly NodeVisualizer<object> mNodeVisualizer;
 
         // The real-time network simulation.
         private readonly SimulatedNetwork<Packet> mSimulatedNetwork = new SimulatedNetwork<Packet>();
@@ -31,6 +35,14 @@ namespace AdHocMAC
         public MainWindow()
         {
             InitializeComponent();
+
+            mNodeVisualizer = new NodeVisualizer<object>(this, Grid.Children);
+            var objects = new List<object>();
+            for (int i = 0; i < 10; i++)
+            {
+                objects.Add(new object());
+            }
+            mNodeVisualizer.ResetNodes(objects);
         }
 
         private async void StartButton_Click(object sender, RoutedEventArgs e)
