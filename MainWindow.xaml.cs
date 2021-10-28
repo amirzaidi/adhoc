@@ -18,7 +18,7 @@ namespace AdHocMAC
     {
         // Fields to handle showing what is happening to the user.
         private readonly LogHandler mLogHandler = new LogHandler();
-        private readonly NodeVisualizer<Node> mNodeVisualizer;
+        private readonly NodeVisualizer<INode<Packet>> mNodeVisualizer;
 
         // The real-time network simulation.
         private readonly SimulatedNetwork<Packet> mSimulatedNetwork = new SimulatedNetwork<Packet>();
@@ -36,10 +36,15 @@ namespace AdHocMAC
         public MainWindow()
         {
             InitializeComponent();
-            mNodeVisualizer = new NodeVisualizer<Node>(
+            mNodeVisualizer = new NodeVisualizer<INode<Packet>>(
                 this,
                 Grid.Children,
-                (node, x, y) => mSimulatedNetwork.SetNodeAt(node, Point3D.Create(x, y))
+                (n1, x, y) =>
+                {
+                    var (added, removed) = mSimulatedNetwork.SetNodeAt(n1, Point3D.Create(x, y));
+                    added.ForEach(n2 => mNodeVisualizer.ConnectNodes(n1, n2));
+                    removed.ForEach(n2 => mNodeVisualizer.DisconnectNodes(n1, n2));
+                }
             );
 
             mReset = new DuplicateRunDiscarder(Reset);
@@ -85,7 +90,7 @@ namespace AdHocMAC
             }
 
             // Show everything in the UI.
-            mNodeVisualizer.ResetNodes(nodes);
+            mNodeVisualizer.ResetNodes(new List<INode<Packet>>(nodes));
 
             // Start all logic loops when they are added to the UI.
             foreach (var node in nodes)

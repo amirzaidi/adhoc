@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -154,17 +155,10 @@ namespace AdHocMAC.GUI
                 // Immediately trigger the move event.
                 mOnNodeMoved(node, transform.X + GRID_PANEL_CENTER_X, transform.Y + GRID_PANEL_CENTER_Y);
             }
-
-            // To-Do: Remove this placeholder.
-            if (Nodes.Count >= 3)
-            {
-                AddLine(Nodes[0], Nodes[1]);
-                AddLine(Nodes[1], Nodes[2]);
-                AddLine(Nodes[2], Nodes[0]);
-            }
         }
 
-        private void AddLine(T n1, T n2)
+        // We need to remove and add lines during runtime because rendering 900 lines all the time is a bad idea.
+        public void ConnectNodes(T n1, T n2)
         {
             var e1 = mNodeUIElements[n1];
             var t1 = e1.RenderTransform as TranslateTransform;
@@ -187,6 +181,20 @@ namespace AdHocMAC.GUI
             // Add to UI.
             mUIElements.Add(line);
             Panel.SetZIndex(line, 0);
+        }
+
+        public void DisconnectNodes(T n1, T n2)
+        {
+            mLines.Where(line =>
+            {
+                var (n3, n4) = line.Value;
+                return (Equals(n1, n3) && Equals(n2, n4)) || (Equals(n1, n4) && Equals(n2, n3));
+                // Save this in a list to prevent modifying the original collection while iterating.
+            }).ToList().ForEach(line =>
+            {
+                mUIElements.Remove(line.Key);
+                mLines.Remove(line.Key);
+            });
         }
 
         private void ClearUI()

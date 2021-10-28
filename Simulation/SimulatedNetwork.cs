@@ -17,7 +17,7 @@ namespace AdHocMAC.Simulation
 
         private readonly Dictionary<INode<T>, NodeState<T>> mNodes = new Dictionary<INode<T>, NodeState<T>>();
 
-        private double mRange = 1.0; // Range in Point3D euclidian units.
+        private double mRange = 200.0; // Range in Point3D euclidian units.
         private double mTransmittedUnitsPerSecond = 1.0; // Characters sent per second.
         private double mTravelDistancePerSecond = 2.0; // Speed of light in this system.
 
@@ -152,20 +152,53 @@ namespace AdHocMAC.Simulation
             }
         }
 
+        // Reuse these two variables for efficiency.
+        private readonly List<INode<T>> mConnectedNodes = new List<INode<T>>();
+        private readonly List<INode<T>> mDisconnectedNodes = new List<INode<T>>();
+
         /// <summary>
         /// Tells the medium that a node is at a given location.
         /// If the medium has not seen the node before, it will automatically register it.
         /// </summary>
-        public void SetNodeAt(INode<T> Node, Point3D Point)
+        public (List<INode<T>>, List<INode<T>>) SetNodeAt(INode<T> Node, Point3D Point)
         {
+            mConnectedNodes.Clear();
+            mDisconnectedNodes.Clear();
+
             if (mNodes.TryGetValue(Node, out var nodeState))
             {
                 // Cancel all timers relating to the old position of the node.
                 nodeState.PositionChangeCTS.Cancel();
+
+                foreach (var node in mNodes)
+                {
+                    if (!Equals(node, Node))
+                    {
+                        var wasInRange = Point3D.Distance(nodeState.Position, node.Value.Position) <= mRange;
+                        var isInRange = Point3D.Distance(Point, node.Value.Position) <= mRange;
+
+                        if (isInRange && !wasInRange)
+                        {
+                            mConnectedNodes.Add(node.Key);
+                        }
+                        else if (!isInRange && wasInRange)
+                        {
+                            mDisconnectedNodes.Add(node.Key);
+                        }
+                    }
+                }
             }
             else
             {
                 // This node is new, add it.
+                foreach (var node in mNodes)
+                {
+                    if (Point3D.Distance(Point, node.Value.Position) <= mRange)
+                    {
+                        mConnectedNodes.Add(node.Key);
+                    }
+                }
+
                 nodeState = new NodeState<T>();
                 mNodes.Add(Node, nodeState);
             }
@@ -173,6 +206,8 @@ namespace AdHocMAC.Simulation
             // Update the new position.
             nodeState.Position = Point;
             nodeState.PositionChangeCTS = new CancellationTokenSource();
+
+            return (mConnectedNodes, mDisconnectedNodes);
         }
 
         /// <summary>
