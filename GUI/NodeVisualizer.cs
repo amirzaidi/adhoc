@@ -1,5 +1,4 @@
-﻿using AdHocMAC.Nodes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,42 +15,46 @@ namespace AdHocMAC.GUI
     {
         private const int GRID_MARGIN = 20;
         private const int GRID_PANEL_SIZE = 70;
-        private const double GRID_PANEL_CENTER = GRID_PANEL_SIZE / 2.0;
+        private const double GRID_PANEL_CENTER_X = GRID_PANEL_SIZE / 2.0;
+        private const double GRID_PANEL_CENTER_Y = 15;
         private const int ROW_PANEL_COUNT = 10;
 
+        // Two-way linking for fast lookup.
         private readonly Dictionary<UIElement, T> mNodes = new Dictionary<UIElement, T>();
-        private readonly Dictionary<T, UIElement> mElements = new Dictionary<T, UIElement>();
+        private readonly Dictionary<T, UIElement> mNodeUIElements = new Dictionary<T, UIElement>();
+
+        private readonly Dictionary<Line, (T, T)> mLines = new Dictionary<Line, (T, T)>();
 
         private readonly Window mWindow;
-        private readonly UIElementCollection mParent;
+        private readonly UIElementCollection mUIElements;
         private readonly Action<T, double, double> mOnNodeMoved;
 
-        private bool isDragging;
-        private Point clickPosition;
+        private bool mIsDragging;
+        private Point mClickPosition;
 
-        public NodeVisualizer(Window Window, UIElementCollection Parent, Action<T, double, double> OnNodeMoved)
+        public NodeVisualizer(Window Window, UIElementCollection UIElements, Action<T, double, double> OnNodeMoved)
         {
             mWindow = Window;
-            mParent = Parent;
+            mUIElements = UIElements;
             mOnNodeMoved = OnNodeMoved;
         }
 
         private void Control_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            isDragging = true;
-            clickPosition = e.GetPosition(mWindow);
+            mIsDragging = true;
+            mClickPosition = e.GetPosition(mWindow);
 
             var draggableControl = sender as UIElement;
             var transform = draggableControl.RenderTransform as TranslateTransform;
-            clickPosition.X -= transform.X;
-            clickPosition.Y -= transform.Y;
+            mClickPosition.X -= transform.X;
+            mClickPosition.Y -= transform.Y;
             draggableControl.CaptureMouse();
         }
 
         private void Control_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            isDragging = false;
-            clickPosition = default;
+            mIsDragging = false;
+            mClickPosition = default;
 
             var draggableControl = sender as UIElement;
             draggableControl.ReleaseMouseCapture();
@@ -60,21 +63,39 @@ namespace AdHocMAC.GUI
         private void Control_MouseMove(object sender, MouseEventArgs e)
         {
             var draggableControl = sender as UIElement;
-            if (isDragging && draggableControl != null)
+            if (mIsDragging && draggableControl != null)
             {
+                var draggedNode = mNodes[draggableControl];
                 var currentPosition = e.GetPosition(mWindow);
                 var transform = draggableControl.RenderTransform as TranslateTransform;
 
-                transform.X = currentPosition.X - clickPosition.X;
-                transform.Y = currentPosition.Y - clickPosition.Y;
+                transform.X = currentPosition.X - mClickPosition.X;
+                transform.Y = currentPosition.Y - mClickPosition.Y;
 
-                mOnNodeMoved(mNodes[draggableControl], transform.X + GRID_PANEL_CENTER, transform.Y + GRID_PANEL_CENTER);
+                foreach (var line in mLines)
+                {
+                    var (n1, n2) = line.Value;
+                    if (Equals(draggedNode, n1))
+                    {
+                        // Update X1, Y1
+                        line.Key.X1 = transform.X + GRID_PANEL_CENTER_X;
+                        line.Key.Y1 = transform.Y + GRID_PANEL_CENTER_Y;
+                    }
+                    else if (Equals(draggedNode, n2))
+                    {
+                        // Update X2, Y2
+                        line.Key.X2 = transform.X + GRID_PANEL_CENTER_X;
+                        line.Key.Y2 = transform.Y + GRID_PANEL_CENTER_Y;
+                    }
+                }
+
+                mOnNodeMoved(mNodes[draggableControl], transform.X + GRID_PANEL_CENTER_X, transform.Y + GRID_PANEL_CENTER_Y);
             }
         }
 
         public void ResetNodes(List<T> Nodes)
         {
-            CleanNodes();
+            ClearUI();
             AddNodes(Nodes);
         }
 
@@ -103,9 +124,7 @@ namespace AdHocMAC.GUI
                     X = GRID_MARGIN + GRID_PANEL_SIZE * (elementId % ROW_PANEL_COUNT),
                     Y = GRID_MARGIN + GRID_PANEL_SIZE * (elementId / ROW_PANEL_COUNT),
                 };
-
                 panel.RenderTransform = transform;
-
                 panel.Children.Add(new Ellipse
                 {
                     Width = 30,
@@ -126,26 +145,67 @@ namespace AdHocMAC.GUI
 
                 // Double link.
                 mNodes[panel] = node;
-                mElements[node] = panel;
+                mNodeUIElements[node] = panel;
 
                 // Add to UI.
-                mParent.Add(panel);
+                mUIElements.Add(panel);
+                Panel.SetZIndex(panel, 1);
 
                 // Immediately trigger the move event.
-                mOnNodeMoved(node, transform.X + GRID_PANEL_CENTER, transform.Y + GRID_PANEL_CENTER);
+                mOnNodeMoved(node, transform.X + GRID_PANEL_CENTER_X, transform.Y + GRID_PANEL_CENTER_Y);
+            }
+
+            // To-Do: Remove this placeholder.
+            if (Nodes.Count >= 3)
+            {
+                AddLine(Nodes[0], Nodes[1]);
+                AddLine(Nodes[1], Nodes[2]);
+                AddLine(Nodes[2], Nodes[0]);
             }
         }
 
-        private void CleanNodes()
+        private void AddLine(T n1, T n2)
         {
-            foreach (var el in mElements.Values)
+            var e1 = mNodeUIElements[n1];
+            var t1 = e1.RenderTransform as TranslateTransform;
+
+            var e2 = mNodeUIElements[n2];
+            var t2 = e2.RenderTransform as TranslateTransform;
+
+            var line = new Line
             {
-                // Remove from UI.
-                mParent.Remove(el);
+                X1 = t1.X + GRID_PANEL_CENTER_X,
+                Y1 = t1.Y + GRID_PANEL_CENTER_Y,
+                X2 = t2.X + GRID_PANEL_CENTER_X,
+                Y2 = t2.Y + GRID_PANEL_CENTER_Y,
+                Stroke = new SolidColorBrush(Color.FromArgb(255, 0, 0, 200)),
+                StrokeThickness = 2,
+            };
+
+            mLines.Add(line, (n1, n2));
+
+            // Add to UI.
+            mUIElements.Add(line);
+            Panel.SetZIndex(line, 0);
+        }
+
+        private void ClearUI()
+        {
+            // Remove everything from the UI then clear lists.
+            foreach (var el in mNodeUIElements.Values)
+            {
+                mUIElements.Remove(el);
             }
 
             mNodes.Clear();
-            mElements.Clear();
+            mNodeUIElements.Clear();
+
+            foreach (var line in mLines.Keys)
+            {
+                mUIElements.Remove(line);
+            }
+
+            mLines.Clear();
         }
     }
 }
