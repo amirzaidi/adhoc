@@ -220,5 +220,10 @@ namespace AdHocMAC.Simulation
                 throw new ArgumentException($"Node to be unregistered does not exist");
             }
         }
+        
+        public void ClearNodes()
+        {
+            mNodes.Clear();
+        }
     }
 }

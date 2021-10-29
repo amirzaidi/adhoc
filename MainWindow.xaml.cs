@@ -68,9 +68,11 @@ namespace AdHocMAC
                 }
             }
 
+            mNodeThreads.Clear();
+            mSimulatedNetwork.ClearNodes();
+
             mNodeCount = (int) NodeCount.Value;
             mLogHandler.OnDebug($"Creating {mNodeCount} new nodes");
-            mNodeThreads.Clear();
 
             var nodes = new List<Node>();
 
