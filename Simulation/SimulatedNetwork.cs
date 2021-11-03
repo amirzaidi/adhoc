@@ -159,7 +159,7 @@ namespace AdHocMAC.Simulation
                 {
                     if (!KVP.Value.HasCollided && PacketIfSuccessful != null)
                     {
-                        KVP.Key.OnReceiveSuccess(PacketIfSuccessful);
+                        Task.Run(() => KVP.Key.OnReceiveSuccess(PacketIfSuccessful));
                     }
 
                     KVP.Key.OnReceiveEnd();
