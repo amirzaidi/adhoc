@@ -18,12 +18,12 @@ namespace AdHocMAC.Simulation
         private readonly Dictionary<INode<T>, NodeState<T>> mNodes = new Dictionary<INode<T>, NodeState<T>>();
 
         private double mRange = 200.0; // Range in Point3D euclidian units.
-        private double mTransmittedUnitsPerSecond = 1.0; // Characters sent per second.
-        private double mTravelDistancePerSecond = 2.0; // Speed of light in this system.
+        private double mTransmittedUnitsPerSecond = 32.0; // Characters sent per second.
+        private double mTravelDistancePerSecond = 50.0; // Speed of light in this system.
 
         public void StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length)
         {
-            var signalDuration = mTransmittedUnitsPerSecond * Length;
+            var signalDuration = Length / mTransmittedUnitsPerSecond;
             CancellationTokenSource CTSOutgoing() => mNodes[FromNode].PositionChangeCTS;
 
             // Start a stopwatch for accurate time measurement.
@@ -32,6 +32,11 @@ namespace AdHocMAC.Simulation
 
             foreach (var KVP in mNodes)
             {
+                if (Equals(FromNode, KVP.Key))
+                {
+                    continue;
+                }
+
                 var KVPCopy = KVP; // Ensure we have an in-memory representation.
                 // "Start" a new thread to handle each point to point transmission.
                 Task.Run(async () =>
@@ -50,6 +55,8 @@ namespace AdHocMAC.Simulation
                         var signalStartTime = distance / mTravelDistancePerSecond;
                         var signalEndTime = signalStartTime + signalDuration;
 
+                        Debug.WriteLine($"{KVPCopy.Key.GetID()}: Send Times [{signalStartTime}, {signalEndTime}]");
+
                         switch (state)
                         {
                             // State 1: The packet has not reached the destination.
@@ -61,13 +68,14 @@ namespace AdHocMAC.Simulation
                                     {
                                         IncreaseTransmissions(KVPCopy);
                                         state = TransmissionState.Ongoing;
+                                        Debug.WriteLine($"{KVPCopy.Key.GetID()}: NotArrived > Ongoing");
                                     }
                                     else
                                     {
                                         state = TransmissionState.Interrupted;
+                                        Debug.WriteLine($"{KVPCopy.Key.GetID()}: NotArrived > Interrupted");
                                     }
                                 }
-
                                 break;
                             // State 2: The packet has started reaching the destination with enough signal strength.
                             case TransmissionState.Ongoing:
@@ -76,6 +84,7 @@ namespace AdHocMAC.Simulation
                                     state = TransmissionState.Interrupted;
                                     packetIfSuccessful = default; // We set this to null to indicate it was lost.
                                     DecreaseTransmissions(KVPCopy, packetIfSuccessful);
+                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Interrupted");
                                     break;
                                 }
 
@@ -83,6 +92,7 @@ namespace AdHocMAC.Simulation
                                 if (!CTS.Token.IsCancellationRequested)
                                 {
                                     DecreaseTransmissions(KVPCopy, packetIfSuccessful);
+                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Exit");
                                     return; // This is one of two exit conditions.
                                 }
                                 break;
@@ -92,12 +102,14 @@ namespace AdHocMAC.Simulation
                                 {
                                     state = TransmissionState.Ongoing;
                                     IncreaseTransmissions(KVPCopy);
+                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Ongoing");
                                     break;
                                 }
 
                                 await WaitUntil(stopWatch, signalEndTime, CTS.Token);
                                 if (!CTS.Token.IsCancellationRequested)
                                 {
+                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Exit");
                                     return; // This is one of two exit conditions.
                                 }
                                 break;
@@ -110,7 +122,11 @@ namespace AdHocMAC.Simulation
         private async Task WaitUntil(Stopwatch SW, double UntilTime, CancellationToken Token)
         {
             var timeToEventMS = (int)Math.Floor(1000.0 * UntilTime - SW.ElapsedMilliseconds);
-            await Task.Delay(timeToEventMS, Token); // First, wait the milliseconds part async.
+            if (timeToEventMS > 0)
+            {
+                await Task.Delay(timeToEventMS, Token); // First, wait the milliseconds part async.
+            }
+
             while (SW.ElapsedTicks < (long)(UntilTime * Stopwatch.Frequency) && !Token.IsCancellationRequested)
             {
                 // Burn CPU until the right timing.
@@ -139,7 +155,7 @@ namespace AdHocMAC.Simulation
             // Completed transmission.
             lock (KVP.Key) // Lock for thread-safety.
             {
-                if (++KVP.Value.OngoingTransmissions == 0)
+                if (--KVP.Value.OngoingTransmissions == 0)
                 {
                     if (!KVP.Value.HasCollided && PacketIfSuccessful != null)
                     {

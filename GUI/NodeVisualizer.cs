@@ -138,7 +138,7 @@ namespace AdHocMAC.GUI
 
                 panel.Children.Add(new Label
                 {
-                    Content = "Node #" + elementNumber,
+                    Content = "Node #" + elementId,
                     Padding = new Thickness(0, 5, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Top,

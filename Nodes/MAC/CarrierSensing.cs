@@ -5,7 +5,7 @@ namespace AdHocMAC.Nodes.MAC
     /// <summary>
     /// Contains the algorithm to handle channel sensing.
     /// </summary>
-    abstract class CarrierSensing : ISendProtocol<Packet>
+    abstract class CarrierSensing : IMACProtocol<Packet>
     {
         // We always have CA enabled to make it easier to implement.
         private readonly CollisionAvoidance mCA = new CollisionAvoidance();

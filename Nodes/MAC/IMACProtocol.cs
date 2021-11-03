@@ -1,6 +1,6 @@
 ﻿namespace AdHocMAC.Nodes.MAC
 {
-    interface ISendProtocol<T>
+    interface IMACProtocol<T>
     {
         /// <summary>
         /// Handles scheduling when to send the packet behind the scenes.

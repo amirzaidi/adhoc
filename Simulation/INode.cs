@@ -2,6 +2,8 @@
 {
     interface INode<T>
     {
+        public int GetID();
+
         /// <summary>
         /// Sense the start of an incoming packet.
         /// </summary>

@@ -1,5 +1,6 @@
 ﻿using AdHocMAC.Nodes.MAC;
 using AdHocMAC.Simulation;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,12 +12,12 @@ namespace AdHocMAC.Nodes
     class Node : INode<Packet>
     {
         private readonly int mId;
-        private readonly ISendProtocol<Packet> mSendProtocol;
+        private readonly IMACProtocol<Packet> mMACProtocol;
 
-        public Node(int Id, ISendProtocol<Packet> SendProtocol)
+        public Node(int Id, IMACProtocol<Packet> MACProtocol)
         {
             mId = Id;
-            mSendProtocol = SendProtocol;
+            mMACProtocol = MACProtocol;
         }
 
 
@@ -29,20 +30,25 @@ namespace AdHocMAC.Nodes
             {
                 await Task.Delay(1000);
 
-                // Send a Hello World packet to the node with ID+1.
-                Send(new Packet
+                if (mId == 0)
                 {
-                    From = mId,
-                    To = mId + 1,
-                    Data = "Hello World!"
-                });
+                    // Send a Hello World packet to the node with ID+1.
+                    Send(new Packet
+                    {
+                        From = mId,
+                        To = mId + 1,
+                        Data = "Hello World!"
+                    });
+                }
+
+                await Task.Delay(100000);
             }
         }
 
         private void Send(Packet OutgoingPacket)
         {
             // The basic node code does not bother with how sending is handled.
-            mSendProtocol.Send(OutgoingPacket);
+            mMACProtocol.Send(OutgoingPacket);
         }
 
         /*
@@ -50,7 +56,7 @@ namespace AdHocMAC.Nodes
          */
         public void OnReceiveStart()
         {
-            mSendProtocol.OnChannelBusy();
+            mMACProtocol.OnChannelBusy();
         }
 
         public void OnReceiveCollide()
@@ -62,7 +68,8 @@ namespace AdHocMAC.Nodes
 
         public void OnReceiveSuccess(Packet IncomingPacket)
         {
-            if (IncomingPacket.To == mId && mSendProtocol.OnReceive(IncomingPacket))
+            Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
+            if (IncomingPacket.To == mId && mMACProtocol.OnReceive(IncomingPacket))
             {
                 // To-Do: What do we want to do with "good" packets?
             }
@@ -70,7 +77,9 @@ namespace AdHocMAC.Nodes
 
         public void OnReceiveEnd()
         {
-            mSendProtocol.OnChannelFree();
+            mMACProtocol.OnChannelFree();
         }
+
+        public int GetID() => mId;
     }
 }

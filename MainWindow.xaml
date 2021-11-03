@@ -9,7 +9,7 @@
         Title="Ad-Hoc Networks: MAC Simulation" Height="600" Width="800">
     <Grid Name="Grid">
         <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" Height="30" Width="70" Content="Start" Click="StartButton_Click" />
-        <Slider Name="NodeCount" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,10" Width="680" Height="30" Value="10" Maximum="30"  TickPlacement="Both" TickFrequency="1" 
+        <Slider Name="NodeCount" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,10" Width="680" Height="30" Value="2" Maximum="30"  TickPlacement="Both" TickFrequency="1" 
 IsSnapToTickEnabled="True" />
 
     </Grid>

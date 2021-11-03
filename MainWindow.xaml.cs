@@ -4,6 +4,7 @@ using AdHocMAC.Nodes.MAC;
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -79,6 +80,7 @@ namespace AdHocMAC
             mCTS = new CancellationTokenSource();
             for (int i = 0; i < mNodeCount; i++)
             {
+                /*
                 // To-Do: Make the outgoing packet function use the SimulatedNetwork instead of only logging.
                 var protocol = new CarrierSensingPPersistent
                 (
@@ -86,9 +88,14 @@ namespace AdHocMAC
                     Packet => mLogHandler.OnDebug(i, $"Sending: {Packet.Data} to {Packet.To}"),
                     mPPersistency
                 );
+                */
+                var protocol = new Aloha();
+                var node = new Node(i, protocol);
+                protocol.SendAction =
+                    OutgoingPacket => mSimulatedNetwork.StartTransmission(node, OutgoingPacket, Packet.GetLength(OutgoingPacket));
 
                 // Add newly created node.
-                nodes.Add(new Node(i, protocol));
+                nodes.Add(node);
             }
 
             // Show everything in the UI.
