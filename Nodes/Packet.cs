@@ -9,7 +9,7 @@
         public static int GetLength(Packet Packet)
         {
             var byteCount = 3 * sizeof(int) + Packet.Data.Length;
-            return 8 * byteCount;
+            return byteCount;
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AdHocMAC.Utility;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -18,8 +19,8 @@ namespace AdHocMAC.Simulation
         private readonly Dictionary<INode<T>, NodeState<T>> mNodes = new Dictionary<INode<T>, NodeState<T>>();
 
         private double mRange = 200.0; // Range in Point3D euclidian units.
-        private double mTransmittedUnitsPerSecond = 32.0; // Characters sent per second.
-        private double mTravelDistancePerSecond = 50.0; // Speed of light in this system.
+        private double mTransmittedUnitsPerSecond = 16.0; // Characters sent per second.
+        private double mTravelDistancePerSecond = 256.0; // Speed of light in this system.
 
         public void StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length)
         {
@@ -124,7 +125,7 @@ namespace AdHocMAC.Simulation
             var timeToEventMS = (int)Math.Floor(1000.0 * UntilTime - SW.ElapsedMilliseconds);
             if (timeToEventMS > 0)
             {
-                await Task.Delay(timeToEventMS, Token); // First, wait the milliseconds part async.
+                await Task.Delay(timeToEventMS, Token).IgnoreExceptions(); // First, wait the milliseconds part async.
             }
 
             while (SW.ElapsedTicks < (long)(UntilTime * Stopwatch.Frequency) && !Token.IsCancellationRequested)
@@ -140,11 +141,11 @@ namespace AdHocMAC.Simulation
             {
                 if (++KVP.Value.OngoingTransmissions == 1)
                 {
-                    KVP.Key.OnReceiveStart();
+                    Task.Run(() => KVP.Key.OnReceiveStart());
                 }
                 else
                 {
-                    KVP.Key.OnReceiveCollide();
+                    Task.Run(() => KVP.Key.OnReceiveCollide());
                     KVP.Value.HasCollided = true; // Set this flag for the last transmission to see.
                 }
             }
@@ -162,7 +163,7 @@ namespace AdHocMAC.Simulation
                         Task.Run(() => KVP.Key.OnReceiveSuccess(PacketIfSuccessful));
                     }
 
-                    KVP.Key.OnReceiveEnd();
+                    Task.Run(() => KVP.Key.OnReceiveEnd());
                     KVP.Value.HasCollided = false; // Reset this.
                 }
             }

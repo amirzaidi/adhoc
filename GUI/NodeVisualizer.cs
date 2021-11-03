@@ -183,6 +183,11 @@ namespace AdHocMAC.GUI
             Panel.SetZIndex(line, 0);
         }
 
+        public void ChangeLineColor(T n1, T n2, int r, int g, int b)
+        {
+
+        }
+
         public void DisconnectNodes(T n1, T n2)
         {
             mLines.Where(line =>

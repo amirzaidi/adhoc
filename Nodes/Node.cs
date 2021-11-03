@@ -1,5 +1,6 @@
 ﻿using AdHocMAC.Nodes.MAC;
 using AdHocMAC.Simulation;
+using AdHocMAC.Utility;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,20 +29,19 @@ namespace AdHocMAC.Nodes
         {
             while (!Token.IsCancellationRequested)
             {
-                await Task.Delay(1000);
+                // To-Do: Put Routing Algorithm Here.
 
-                if (mId == 0)
+                await Task.Delay(1000, Token).IgnoreExceptions();
+
+                // Send a Hello World packet to the node with ID+1.
+                Send(new Packet
                 {
-                    // Send a Hello World packet to the node with ID+1.
-                    Send(new Packet
-                    {
-                        From = mId,
-                        To = mId + 1,
-                        Data = "Hello World!"
-                    });
-                }
+                    From = mId,
+                    To = mId + 1,
+                    Data = "Hello World!"
+                });
 
-                await Task.Delay(100000);
+                await Task.Delay(9000, Token).IgnoreExceptions();
             }
         }
 
@@ -61,6 +61,7 @@ namespace AdHocMAC.Nodes
 
         public void OnReceiveCollide()
         {
+            Debug.WriteLine($"{mId}: COLLISION");
             // This one is mutually exclusive with OnReceiveSuccess.
             // Either this event happens, or the other one, but not both.
             // For now, we can probably ignore this one.

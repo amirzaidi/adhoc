@@ -3,6 +3,7 @@ using AdHocMAC.Nodes;
 using AdHocMAC.Nodes.MAC;
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -91,6 +92,7 @@ namespace AdHocMAC
                 */
                 var protocol = new Aloha();
                 var node = new Node(i, protocol);
+
                 protocol.SendAction =
                     OutgoingPacket => mSimulatedNetwork.StartTransmission(node, OutgoingPacket, Packet.GetLength(OutgoingPacket));
 
