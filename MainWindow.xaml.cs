@@ -18,12 +18,15 @@ namespace AdHocMAC
     /// </summary>
     public partial class MainWindow : Window
     {
+        private const int TOP_LEVEL_SEED = 1234567890;
+        private readonly Random mSeedGenerator = new Random(TOP_LEVEL_SEED);
+
         // Fields to handle showing what is happening to the user.
         private readonly LogHandler mLogHandler = new LogHandler();
         private readonly NodeVisualizer<INode<Packet>> mNodeVisualizer;
 
         // The real-time network simulation.
-        private readonly SimulatedNetwork<Packet> mSimulatedNetwork = new SimulatedNetwork<Packet>();
+        private readonly SimulatedNetwork<Packet> mSimulatedNetwork;
 
         // Prevent doing multiple Resets simultaneously.
         private readonly DuplicateRunDiscarder mReset;
@@ -46,9 +49,13 @@ namespace AdHocMAC
                     var (added, removed) = mSimulatedNetwork.SetNodeAt(n1, Point3D.Create(x, y));
                     added.ForEach(n2 => mNodeVisualizer.ConnectNodes(n1, n2));
                     removed.ForEach(n2 => mNodeVisualizer.DisconnectNodes(n1, n2));
-                }
+                },
+                n => n.GetID()
             );
 
+            var nodeVisualizerEvents = new NodeVisualizerEvents<INode<Packet>>(mNodeVisualizer);
+
+            mSimulatedNetwork = new SimulatedNetwork<Packet>(nodeVisualizerEvents);
             mReset = new DuplicateRunDiscarder(Reset);
         }
 
@@ -91,7 +98,7 @@ namespace AdHocMAC
                 );
                 */
                 var protocol = new Aloha();
-                var node = new Node(i, protocol);
+                var node = new Node(i, protocol, new Random(mSeedGenerator.Next()));
 
                 protocol.SendAction =
                     OutgoingPacket => mSimulatedNetwork.StartTransmission(node, OutgoingPacket, Packet.GetLength(OutgoingPacket));

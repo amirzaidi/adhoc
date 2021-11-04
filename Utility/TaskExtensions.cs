@@ -2,7 +2,7 @@
 
 namespace AdHocMAC.Utility
 {
-    static class Extensions
+    static class TaskExtensions
     {
         public static Task IgnoreExceptions(this Task input) => input.ContinueWith(_ => { });
     }

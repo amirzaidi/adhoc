@@ -17,19 +17,31 @@ namespace AdHocMAC.Simulation
         }
 
         private readonly Dictionary<INode<T>, NodeState<T>> mNodes = new Dictionary<INode<T>, NodeState<T>>();
+        private readonly INetworkEventLogger<INode<T>> mLogger;
 
         private double mRange = 200.0; // Range in Point3D euclidian units.
         private double mTransmittedUnitsPerSecond = 16.0; // Characters sent per second.
         private double mTravelDistancePerSecond = 256.0; // Speed of light in this system.
 
-        public void StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length)
+        public SimulatedNetwork(INetworkEventLogger<INode<T>> Logger)
         {
+            mLogger = Logger;
+        }
+
+        public async Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length)
+        {
+            if (!mNodes.TryGetValue(FromNode, out var nodeState))
+            {
+                return;
+            }
+
+            CancellationTokenSource CTSOutgoing() => nodeState.PositionChangeCTS;
             var signalDuration = Length / mTransmittedUnitsPerSecond;
-            CancellationTokenSource CTSOutgoing() => mNodes[FromNode].PositionChangeCTS;
 
             // Start a stopwatch for accurate time measurement.
             var stopWatch = new Stopwatch();
             stopWatch.Start();
+            mLogger.BeginSend(FromNode);
 
             foreach (var KVP in mNodes)
             {
@@ -40,17 +52,21 @@ namespace AdHocMAC.Simulation
 
                 var KVPCopy = KVP; // Ensure we have an in-memory representation.
                 // "Start" a new thread to handle each point to point transmission.
-                Task.Run(async () =>
+                _ = Task.Run(async () =>
                 {
                     var state = TransmissionState.NotArrived;
                     var packetIfSuccessful = OutgoingPacket; // We set this to null when it should not be received.
 
+                    // To-Do: Move this to the proper location.
+                    mLogger.BeginReceive(KVPCopy.Key, FromNode);
+
                     CancellationTokenSource CTSIncoming() => KVP.Value.PositionChangeCTS;
 
-                    while (true)
+                    var continueSimulation = true;
+                    while (continueSimulation)
                     {
                         var CTS = CancellationTokenSource.CreateLinkedTokenSource(CTSOutgoing().Token, CTSIncoming().Token);
-                        var distance = Point3D.Distance(mNodes[FromNode].Position, KVPCopy.Value.Position);
+                        var distance = Point3D.Distance(nodeState.Position, KVPCopy.Value.Position);
                         var inRange = distance <= mRange;
 
                         var signalStartTime = distance / mTravelDistancePerSecond;
@@ -94,7 +110,7 @@ namespace AdHocMAC.Simulation
                                 {
                                     DecreaseTransmissions(KVPCopy, packetIfSuccessful);
                                     Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Exit");
-                                    return; // This is one of two exit conditions.
+                                    continueSimulation = false; // This is one of two exit conditions.
                                 }
                                 break;
                             // State 3: The packet has started reaching the destination, but the signal strength is too low.
@@ -111,13 +127,19 @@ namespace AdHocMAC.Simulation
                                 if (!CTS.Token.IsCancellationRequested)
                                 {
                                     Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Exit");
-                                    return; // This is one of two exit conditions.
+                                    continueSimulation = false; // This is one of two exit conditions.
                                 }
                                 break;
                         }
                     }
+
+                    // To-Do: Move this to the proper location.
+                    mLogger.EndReceive(KVPCopy.Key, FromNode);
                 });
             }
+
+            await WaitUntil(stopWatch, signalDuration, new CancellationTokenSource().Token);
+            mLogger.EndSend(FromNode);
         }
 
         private async Task WaitUntil(Stopwatch SW, double UntilTime, CancellationToken Token)
