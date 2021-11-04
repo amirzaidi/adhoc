@@ -90,7 +90,7 @@ namespace AdHocMAC
                     mPPersistency
                 );
                 */
-                var protocol = new Aloha();
+                var protocol = new CarrierSensingNonPersistent();
                 var node = new Node(i, protocol);
 
                 protocol.SendAction =
