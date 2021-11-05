@@ -21,10 +21,10 @@ namespace AdHocMAC.GUI
         private const int ROW_PANEL_COUNT = 10;
 
         // Two-way linking for fast lookup.
-        private readonly Dictionary<UIElement, T> mNodes = new Dictionary<UIElement, T>();
+        public readonly Dictionary<UIElement, T> mNodes = new Dictionary<UIElement, T>();
         private readonly Dictionary<T, UIElement> mNodeUIElements = new Dictionary<T, UIElement>();
 
-        private readonly Dictionary<Line, (T, T)> mLines = new Dictionary<Line, (T, T)>();
+        public readonly Dictionary<Line, (T, T)> mLines = new Dictionary<Line, (T, T)>();
 
         private readonly Window mWindow;
         private readonly UIElementCollection mUIElements;

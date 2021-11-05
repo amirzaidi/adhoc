@@ -11,6 +11,7 @@
         <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" Height="30" Width="70" Content="Start" Click="StartButton_Click" />
         <Slider Name="NodeCount" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,10" Width="680" Height="30" Value="2" Maximum="30"  TickPlacement="Both" TickFrequency="1" 
 IsSnapToTickEnabled="True" />
+        <Button Content="Start Route" HorizontalAlignment="Left" Margin="704,469,0,0" VerticalAlignment="Top" Height="37" Width="70" Click="Button_Click"/>
 
     </Grid>
 </Window>

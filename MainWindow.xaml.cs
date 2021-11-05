@@ -1,6 +1,7 @@
 ﻿using AdHocMAC.GUI;
 using AdHocMAC.Nodes;
 using AdHocMAC.Nodes.MAC;
+using AdHocMAC.Nodes.Routing;
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
 using System;
@@ -111,6 +112,13 @@ namespace AdHocMAC
             }
 
             mLogHandler.OnDebug($"Started {mNodeThreads.Count} nodes");
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            Routing.GetShortestPath(mNodeVisualizer);
+
+
         }
     }
 }
