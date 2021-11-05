@@ -9,6 +9,8 @@ namespace AdHocMAC.Simulation
 {
     class PhysicsNetwork<T> : INetwork<T>
     {
+        private const bool DEBUG = false;
+
         private enum TransmissionState
         {
             NotArrived,
@@ -81,7 +83,7 @@ namespace AdHocMAC.Simulation
                         var signalStartTime = distance / mTravelDistancePerSecond;
                         var signalEndTime = signalStartTime + signalDuration;
 
-                        Debug.WriteLine($"{debugPrint}: Send Times [{signalStartTime}, {signalEndTime}]");
+                        if (DEBUG) Debug.WriteLine($"{debugPrint}: Send Times [{signalStartTime}, {signalEndTime}]");
 
                         switch (state)
                         {
@@ -95,13 +97,13 @@ namespace AdHocMAC.Simulation
                                         IncreaseTransmissions(toNode, toNodeState);
                                         state = TransmissionState.Ongoing;
 
-                                        Debug.WriteLine($"{debugPrint}: NotArrived > Ongoing");
+                                        if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Ongoing");
                                         mLogger.BeginReceive(toNode, FromNode); // BeginReceive when we enter Ongoing.
                                     }
                                     else
                                     {
                                         state = TransmissionState.Interrupted;
-                                        Debug.WriteLine($"{debugPrint}: NotArrived > Interrupted");
+                                        if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Interrupted");
                                     }
                                 }
                                 break;
@@ -113,7 +115,7 @@ namespace AdHocMAC.Simulation
                                     shouldDeliverPacket = false;
                                     DecreaseTransmissions(toNode, toNodeState, shouldDeliverPacket, OutgoingPacket);
 
-                                    Debug.WriteLine($"{debugPrint}: Ongoing > Interrupted");
+                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Ongoing > Interrupted");
                                     mLogger.EndReceive(toNode, FromNode); // EndReceive when we leave Ongoing.
 
                                     break;
@@ -124,7 +126,7 @@ namespace AdHocMAC.Simulation
                                 {
                                     DecreaseTransmissions(toNode, toNodeState, shouldDeliverPacket, OutgoingPacket);
 
-                                    Debug.WriteLine($"{debugPrint}: Ongoing > Exit");
+                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Ongoing > Exit");
                                     mLogger.EndReceive(toNode, FromNode); // EndReceive when we leave Ongoing.
 
                                     return; // This is one of two exit conditions.
@@ -137,7 +139,7 @@ namespace AdHocMAC.Simulation
                                     state = TransmissionState.Ongoing;
                                     IncreaseTransmissions(toNode, toNodeState);
 
-                                    Debug.WriteLine($"{debugPrint}: Interrupted > Ongoing");
+                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Ongoing");
                                     mLogger.BeginReceive(toNode, FromNode); // BeginReceive when we enter Ongoing.
 
                                     break;
@@ -146,7 +148,7 @@ namespace AdHocMAC.Simulation
                                 await WaitUntil(stopWatch, signalEndTime, linkToken);
                                 if (!linkToken.IsCancellationRequested)
                                 {
-                                    Debug.WriteLine($"{debugPrint}: Interrupted > Exit");
+                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Exit");
                                     return; // This is one of two exit conditions.
                                 }
                                 break;
