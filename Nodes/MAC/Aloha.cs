@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.MAC
 {
@@ -9,7 +10,7 @@ namespace AdHocMAC.Nodes.MAC
     {
         public Action<Packet> SendAction;
 
-        public void Send(Packet OutgoingPacket)
+        public async Task Send(Packet OutgoingPacket)
         {
             SendAction(OutgoingPacket);
         }

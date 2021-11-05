@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.MAC
 {
@@ -11,17 +12,14 @@ namespace AdHocMAC.Nodes.MAC
         private readonly CollisionAvoidance mCA = new CollisionAvoidance();
         private readonly Action<Packet> mTransmit;
 
-        private bool mIsChannelBusy;
+        protected bool mIsChannelBusy;
 
-        public CarrierSensing(Action<Packet> Transmit)
+        public CarrierSensing()
         {
-            mTransmit = Transmit;
+            //mTransmit = Transmit;
         }
 
-        public void Send(Packet OutgoingPacket)
-        {
-        }
-
+        abstract public Task Send(Packet OutgoingPacket);
         public bool OnReceive(Packet IncomingPacket)
         {
             return false;

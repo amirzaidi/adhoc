@@ -1,11 +1,13 @@
-﻿namespace AdHocMAC.Nodes.MAC
+﻿using System.Threading.Tasks;
+
+namespace AdHocMAC.Nodes.MAC
 {
     interface IMACProtocol<T>
     {
         /// <summary>
         /// Handles scheduling when to send the packet behind the scenes.
         /// </summary>
-        public void Send(T OutgoingPacket);
+        public Task Send(T OutgoingPacket);
 
         /// <summary>
         /// Checks the kind of packet, and returns true when the node should handle it.
