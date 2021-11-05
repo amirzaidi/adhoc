@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.MAC
@@ -7,18 +8,15 @@ namespace AdHocMAC.Nodes.MAC
     {
         private readonly double mPPersistency;
 
-        public CarrierSensingPPersistent( double PPersistency) : base()
+        public CarrierSensingPPersistent(double PPersistency) : base()
         {
             mPPersistency = PPersistency;
-
         }
-        override public async Task Send(Packet OutgoingPacket)
-        {
 
+        public override async Task Send(Packet OutgoingPacket, CancellationToken Token)
+        {
             if (!mIsChannelBusy)
             {
-
-
 
             }
         }

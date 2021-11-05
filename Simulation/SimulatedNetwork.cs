@@ -28,14 +28,14 @@ namespace AdHocMAC.Simulation
             mLogger = Logger;
         }
 
-        public async Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length)
+        public async Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length, CancellationToken Token)
         {
             if (!mNodes.TryGetValue(FromNode, out var nodeState))
             {
                 return;
             }
 
-            CancellationTokenSource CTSOutgoing() => nodeState.PositionChangeCTS;
+            CancellationTokenSource CTSOutgoing() => CancellationTokenSource.CreateLinkedTokenSource(nodeState.PositionChangeCTS.Token, Token);
             var signalDuration = Length / mTransmittedUnitsPerSecond;
 
             // Start a stopwatch for accurate time measurement.
@@ -57,16 +57,12 @@ namespace AdHocMAC.Simulation
                     var state = TransmissionState.NotArrived;
                     var packetIfSuccessful = OutgoingPacket; // We set this to null when it should not be received.
 
-                    // To-Do: Move this to the proper location.
-                    mLogger.BeginReceive(KVPCopy.Key, FromNode);
-
                     CancellationTokenSource CTSIncoming() => KVP.Value.PositionChangeCTS;
 
-                    var continueSimulation = true;
-                    while (continueSimulation)
+                    while (!Token.IsCancellationRequested)
                     {
                         var CTS = CancellationTokenSource.CreateLinkedTokenSource(CTSOutgoing().Token, CTSIncoming().Token);
-                        var distance = Point3D.Distance(nodeState.Position, KVPCopy.Value.Position);
+                        var distance = Vector3D.Distance(nodeState.Position, KVPCopy.Value.Position);
                         var inRange = distance <= mRange;
 
                         var signalStartTime = distance / mTravelDistancePerSecond;
@@ -85,7 +81,9 @@ namespace AdHocMAC.Simulation
                                     {
                                         IncreaseTransmissions(KVPCopy);
                                         state = TransmissionState.Ongoing;
+
                                         Debug.WriteLine($"{KVPCopy.Key.GetID()}: NotArrived > Ongoing");
+                                        mLogger.BeginReceive(KVPCopy.Key, FromNode); // BeginReceive when we enter Ongoing.
                                     }
                                     else
                                     {
@@ -101,7 +99,10 @@ namespace AdHocMAC.Simulation
                                     state = TransmissionState.Interrupted;
                                     packetIfSuccessful = default; // We set this to null to indicate it was lost.
                                     DecreaseTransmissions(KVPCopy, packetIfSuccessful);
+
                                     Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Interrupted");
+                                    mLogger.EndReceive(KVPCopy.Key, FromNode); // EndReceive when we leave Ongoing.
+
                                     break;
                                 }
 
@@ -109,8 +110,11 @@ namespace AdHocMAC.Simulation
                                 if (!CTS.Token.IsCancellationRequested)
                                 {
                                     DecreaseTransmissions(KVPCopy, packetIfSuccessful);
+
                                     Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Exit");
-                                    continueSimulation = false; // This is one of two exit conditions.
+                                    mLogger.EndReceive(KVPCopy.Key, FromNode); // EndReceive when we leave Ongoing.
+
+                                    return; // This is one of two exit conditions.
                                 }
                                 break;
                             // State 3: The packet has started reaching the destination, but the signal strength is too low.
@@ -119,7 +123,10 @@ namespace AdHocMAC.Simulation
                                 {
                                     state = TransmissionState.Ongoing;
                                     IncreaseTransmissions(KVPCopy);
+
                                     Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Ongoing");
+                                    mLogger.BeginReceive(KVPCopy.Key, FromNode); // BeginReceive when we enter Ongoing.
+
                                     break;
                                 }
 
@@ -127,18 +134,15 @@ namespace AdHocMAC.Simulation
                                 if (!CTS.Token.IsCancellationRequested)
                                 {
                                     Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Exit");
-                                    continueSimulation = false; // This is one of two exit conditions.
+                                    return; // This is one of two exit conditions.
                                 }
                                 break;
                         }
                     }
-
-                    // To-Do: Move this to the proper location.
-                    mLogger.EndReceive(KVPCopy.Key, FromNode);
                 });
             }
 
-            await WaitUntil(stopWatch, signalDuration, new CancellationTokenSource().Token);
+            await WaitUntil(stopWatch, signalDuration, Token);
             mLogger.EndSend(FromNode);
         }
 
@@ -199,7 +203,7 @@ namespace AdHocMAC.Simulation
         /// Tells the medium that a node is at a given location.
         /// If the medium has not seen the node before, it will automatically register it.
         /// </summary>
-        public (List<INode<T>>, List<INode<T>>) SetNodeAt(INode<T> Node, Point3D Point)
+        public (List<INode<T>>, List<INode<T>>) SetNodeAt(INode<T> Node, Vector3D Point)
         {
             mConnectedNodes.Clear();
             mDisconnectedNodes.Clear();
@@ -213,8 +217,8 @@ namespace AdHocMAC.Simulation
                 {
                     if (!Equals(node, Node))
                     {
-                        var wasInRange = Point3D.Distance(nodeState.Position, node.Value.Position) <= mRange;
-                        var isInRange = Point3D.Distance(Point, node.Value.Position) <= mRange;
+                        var wasInRange = Vector3D.Distance(nodeState.Position, node.Value.Position) <= mRange;
+                        var isInRange = Vector3D.Distance(Point, node.Value.Position) <= mRange;
 
                         if (isInRange && !wasInRange)
                         {
@@ -232,7 +236,7 @@ namespace AdHocMAC.Simulation
                 // This node is new, add it.
                 foreach (var node in mNodes)
                 {
-                    if (Point3D.Distance(Point, node.Value.Position) <= mRange)
+                    if (Vector3D.Distance(Point, node.Value.Position) <= mRange)
                     {
                         mConnectedNodes.Add(node.Key);
                     }

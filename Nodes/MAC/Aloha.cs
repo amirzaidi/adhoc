@@ -1,18 +1,16 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.MAC
 {
     class Aloha : IMACProtocol<Packet>
     {
-        public Action<Packet> SendAction;
+        public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => { };
 
-        public async Task Send(Packet OutgoingPacket)
+        public async Task Send(Packet OutgoingPacket, CancellationToken Token)
         {
-            SendAction(OutgoingPacket);
+            await SendAction(OutgoingPacket, Token);
         }
 
         public bool OnReceive(Packet IncomingPacket)

@@ -2,13 +2,13 @@
 
 namespace AdHocMAC.Simulation
 {
-    struct Point3D
+    struct Vector3D
     {
         public double X, Y, Z;
 
-        public static Point3D Create(double X, double Y)
+        public static Vector3D Create(double X, double Y)
         {
-            return new Point3D()
+            return new Vector3D()
             {
                 X = X,
                 Y = Y,
@@ -16,7 +16,7 @@ namespace AdHocMAC.Simulation
             };
         }
 
-        public static double Distance(Point3D A, Point3D B)
+        public static double Distance(Vector3D A, Vector3D B)
         {
             var dX = B.X - A.X;
             var dY = B.Y - A.Y;

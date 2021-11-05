@@ -24,7 +24,6 @@ namespace AdHocMAC.Nodes
             mRNG = RNG;
         }
 
-
         /// <summary>
         /// This can do background work, such as coming up with random packets to send.
         /// </summary>
@@ -37,21 +36,16 @@ namespace AdHocMAC.Nodes
                 await Task.Delay(mRNG.Next(0, 3000), Token).IgnoreExceptions();
 
                 // Send a Hello World packet to the node with ID+1.
-                Send(new Packet
+                // The basic node code does not bother with how sending is handled.
+                await mMACProtocol.Send(new Packet
                 {
                     From = mId,
                     To = mId + 1,
                     Data = "Hello World!"
-                });
+                }, Token);
 
                 await Task.Delay(mRNG.Next(0, 7000), Token).IgnoreExceptions();
             }
-        }
-
-        private void Send(Packet OutgoingPacket)
-        {
-            // The basic node code does not bother with how sending is handled.
-            mMACProtocol.Send(OutgoingPacket);
         }
 
         /*
@@ -76,6 +70,7 @@ namespace AdHocMAC.Nodes
             if (IncomingPacket.To == mId && mMACProtocol.OnReceive(IncomingPacket))
             {
                 // To-Do: What do we want to do with "good" packets?
+                // We should be able to call mMACProtocol.Send from here without issues.
             }
         }
 

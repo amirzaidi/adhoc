@@ -1,11 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Threading;
+﻿using System.Threading;
 
 namespace AdHocMAC.Simulation
 {
     class NodeState<T>
     {
-        public Point3D Position;
+        public Vector3D Position;
         public CancellationTokenSource PositionChangeCTS;
 
         public int OngoingTransmissions;

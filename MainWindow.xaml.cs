@@ -46,7 +46,7 @@ namespace AdHocMAC
                 Grid.Children,
                 (n1, x, y) =>
                 {
-                    var (added, removed) = mSimulatedNetwork.SetNodeAt(n1, Point3D.Create(x, y));
+                    var (added, removed) = mSimulatedNetwork.SetNodeAt(n1, Vector3D.Create(x, y));
                     added.ForEach(n2 => mNodeVisualizer.ConnectNodes(n1, n2));
                     removed.ForEach(n2 => mNodeVisualizer.DisconnectNodes(n1, n2));
                 },
@@ -97,11 +97,11 @@ namespace AdHocMAC
                     mPPersistency
                 );
                 */
-                var protocol = new CarrierSensingNonPersistent();
+                var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), 100, 500);
                 var node = new Node(i, protocol, new Random(mSeedGenerator.Next()));
 
-                protocol.SendAction =
-                    OutgoingPacket => mSimulatedNetwork.StartTransmission(node, OutgoingPacket, Packet.GetLength(OutgoingPacket));
+                // We set this afterwards because we need a reference to node.
+                protocol.SendAction = async (p, ct) => await mSimulatedNetwork.StartTransmission(node, p, Packet.GetLength(p), ct);
 
                 // Add newly created node.
                 nodes.Add(node);

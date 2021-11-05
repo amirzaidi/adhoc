@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.MAC
 {
@@ -7,7 +8,7 @@ namespace AdHocMAC.Nodes.MAC
         /// <summary>
         /// Handles scheduling when to send the packet behind the scenes.
         /// </summary>
-        public Task Send(T OutgoingPacket);
+        public Task Send(T OutgoingPacket, CancellationToken Token);
 
         /// <summary>
         /// Checks the kind of packet, and returns true when the node should handle it.

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.MAC
@@ -8,21 +10,24 @@ namespace AdHocMAC.Nodes.MAC
     /// </summary>
     abstract class CarrierSensing : IMACProtocol<Packet>
     {
-        // We always have CA enabled to make it easier to implement.
-        private readonly CollisionAvoidance mCA = new CollisionAvoidance();
-        private readonly Action<Packet> mTransmit;
-
+        public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => Debug.WriteLine("[CSMA] Simulated Send");
         protected bool mIsChannelBusy;
 
-        public CarrierSensing()
-        {
-            //mTransmit = Transmit;
-        }
+        // We always have CA enabled to make it easier to implement.
+        private readonly CollisionAvoidance mCA = new CollisionAvoidance();
 
-        abstract public Task Send(Packet OutgoingPacket);
+        public abstract Task Send(Packet OutgoingPacket, CancellationToken Token);
+
         public bool OnReceive(Packet IncomingPacket)
         {
-            return false;
+            if (IncomingPacket.Data == "ACK")
+            {
+                // To-Do: Use the CA protocol.
+                return false;
+            }
+
+            // We do not have ACKs yet, so we can assume every incoming packet is valid.
+            return true;
         }
 
         // To-Do: Maybe combine OnChannelBusy and OnChannelFree into one method.

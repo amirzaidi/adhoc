@@ -5,5 +5,6 @@
     /// </summary>
     class CollisionAvoidance
     {
+        // To-Do: Resend messages that do not receive an ACK in ... time.
     }
 }

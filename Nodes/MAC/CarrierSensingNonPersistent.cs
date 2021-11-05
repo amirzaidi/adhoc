@@ -1,7 +1,6 @@
-﻿using System;
+﻿using AdHocMAC.Utility;
+using System;
 using System.Diagnostics;
-using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,40 +8,48 @@ namespace AdHocMAC.Nodes.MAC
 {
     class CarrierSensingNonPersistent : CarrierSensing
     {
+        private readonly Random mRNG;
+        private readonly int mMinDelay, mMaxDelay;
 
-        //var deferTimeNonP = 10.0f;
-        Task Attempt;
-        public Action<Packet> SendAction;
-        /*public CarrierSensingNonPersistent() : base()
+        private readonly SemaphoreSlim mLock = new SemaphoreSlim(1);
+        private Task mSend = Task.CompletedTask;
+
+        public CarrierSensingNonPersistent(Random RNG, int MinDelay, int MaxDelay) : base()
         {
+            mRNG = RNG;
+            mMinDelay = MinDelay;
+            mMaxDelay = MaxDelay;
         }
-        */
 
-        override public async Task Send(Packet OutgoingPacket)
+        public override async Task Send(Packet OutgoingPacket, CancellationToken Token)
         {
-            var Random = new Random();
+            await mLock.WaitAsync();
+            mSend = mSend.ContinueWith(async _ => await SendWhenChannelFree(OutgoingPacket, Token));
+            mLock.Release();
+        }
+
+        private async Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token)
+        {
             var time = DateTime.Now;
             int attempt = 0;
-            bool isMsgSent = false;
-            do
+
+            while (!Token.IsCancellationRequested)
             {
-                if (!mIsChannelBusy)
+                if (mIsChannelBusy)
                 {
-                    SendAction(OutgoingPacket);
-                    Debug.WriteLine($"[{OutgoingPacket.From}]NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
-                    isMsgSent = true;
-                }
-                else
-                {
-                    Debug.WriteLine($"[{OutgoingPacket.From}]LineBusy at Attempt {attempt} to send");
-                    Debug.WriteLine($"[{OutgoingPacket.From}]Awaiting random");
-                    var sleeper = Task.Delay(Random.Next(1, 2));
+                    Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {attempt} to send");
+                    Debug.WriteLine($"[{OutgoingPacket.From}] Awaiting random");
+                    var sleeper = Task.Delay(mRNG.Next(mMinDelay, mMaxDelay), Token).IgnoreExceptions();
                     await sleeper;
                     attempt++;
                 }
-            } while (!isMsgSent);
-            isMsgSent = false;
-            attempt = 0;
+                else
+                {
+                    await SendAction(OutgoingPacket, Token);
+                    Debug.WriteLine($"[{OutgoingPacket.From}] NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
+                    break;
+                }
+            }
         }
     }
 }
