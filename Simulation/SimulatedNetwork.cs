@@ -19,13 +19,14 @@ namespace AdHocMAC.Simulation
         private readonly Dictionary<INode<T>, NodeState<T>> mNodes = new Dictionary<INode<T>, NodeState<T>>();
         private readonly INetworkEventLogger<INode<T>> mLogger;
 
-        private double mRange = 200.0; // Range in Point3D euclidian units.
+        private readonly double mRange; // Range in Point3D euclidian units.
         private double mTransmittedUnitsPerSecond = 16.0; // Characters sent per second.
         private double mTravelDistancePerSecond = 256.0; // Speed of light in this system.
 
-        public SimulatedNetwork(INetworkEventLogger<INode<T>> Logger)
+        public SimulatedNetwork(INetworkEventLogger<INode<T>> Logger, double Range)
         {
             mLogger = Logger;
+            mRange = Range;
         }
 
         public async Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length, CancellationToken Token)
@@ -251,6 +252,11 @@ namespace AdHocMAC.Simulation
             nodeState.PositionChangeCTS = new CancellationTokenSource();
 
             return (mConnectedNodes, mDisconnectedNodes);
+        }
+
+        public Vector3D GetNodeLocation(INode<T> Node)
+        {
+            return mNodes[Node].Position;
         }
 
         /// <summary>

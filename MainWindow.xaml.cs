@@ -1,6 +1,7 @@
 ﻿using AdHocMAC.GUI;
 using AdHocMAC.Nodes;
 using AdHocMAC.Nodes.MAC;
+using AdHocMAC.Nodes.Routing;
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
 using System;
@@ -33,10 +34,12 @@ namespace AdHocMAC
 
         // We use these two to stop all running nodes at the same time.
         private CancellationTokenSource mCTS;
+        private readonly List<Node> mNodes = new List<Node>();
         private readonly List<Task> mNodeThreads = new List<Task>();
 
         private int mNodeCount = 10;
         private double mPPersistency = 0.01;
+        private double mRange = 200.0;
 
         public MainWindow()
         {
@@ -55,7 +58,7 @@ namespace AdHocMAC
 
             var nodeVisualizerEvents = new NodeVisualizerEvents<INode<Packet>>(mNodeVisualizer);
 
-            mSimulatedNetwork = new SimulatedNetwork<Packet>(nodeVisualizerEvents);
+            mSimulatedNetwork = new SimulatedNetwork<Packet>(nodeVisualizerEvents, mRange);
             mReset = new DuplicateRunDiscarder(Reset);
         }
 
@@ -117,7 +120,16 @@ namespace AdHocMAC
                 mNodeThreads.Add(Task.Run(() => node.Loop(mCTS.Token)));
             }
 
+            // To-Do: Remove double list.
+            mNodes.Clear();
+            mNodes.AddRange(nodes);
+
             mLogHandler.OnDebug($"Started {mNodeThreads.Count} nodes");
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            Routing.GetShortestPath(mNodes, n => mSimulatedNetwork.GetNodeLocation(n), mRange);
         }
     }
 }
