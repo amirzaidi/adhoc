@@ -8,6 +8,8 @@ namespace AdHocMAC.Nodes.MAC
 {
     class CarrierSensingNonPersistent : CarrierSensing
     {
+        private const bool DEBUG = false;
+
         private readonly Random mRNG;
         private readonly int mMinDelay, mMaxDelay;
 
@@ -37,8 +39,8 @@ namespace AdHocMAC.Nodes.MAC
             {
                 if (mIsChannelBusy)
                 {
-                    Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {attempt} to send");
-                    Debug.WriteLine($"[{OutgoingPacket.From}] Awaiting random");
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {attempt} to send");
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] Awaiting random");
                     var sleeper = Task.Delay(mRNG.Next(mMinDelay, mMaxDelay), Token).IgnoreExceptions();
                     await sleeper;
                     attempt++;
@@ -46,7 +48,7 @@ namespace AdHocMAC.Nodes.MAC
                 else
                 {
                     await SendAction(OutgoingPacket, Token);
-                    Debug.WriteLine($"[{OutgoingPacket.From}] NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
                     break;
                 }
             }

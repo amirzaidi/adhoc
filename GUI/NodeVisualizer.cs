@@ -218,7 +218,7 @@ namespace AdHocMAC.GUI
                 Y1 = t1.Y + GRID_PANEL_CENTER_Y,
                 X2 = t2.X + GRID_PANEL_CENTER_X,
                 Y2 = t2.Y + GRID_PANEL_CENTER_Y,
-                Stroke = new SolidColorBrush(Color.FromArgb(255, 0, 0, 200)),
+                Stroke = new SolidColorBrush(Color.FromArgb(255, 127, 127, 255)),
                 StrokeThickness = 2,
             };
 

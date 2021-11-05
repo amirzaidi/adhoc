@@ -13,6 +13,8 @@ namespace AdHocMAC.Nodes
     /// </summary>
     class Node : INode<Packet>
     {
+        private const bool DEBUG = false;
+
         private readonly int mId;
         private readonly IMACProtocol<Packet> mMACProtocol;
         private readonly Random mRNG;
@@ -58,7 +60,7 @@ namespace AdHocMAC.Nodes
 
         public void OnReceiveCollide()
         {
-            Debug.WriteLine($"{mId}: COLLISION");
+            if (DEBUG) Debug.WriteLine($"{mId}: COLLISION");
             // This one is mutually exclusive with OnReceiveSuccess.
             // Either this event happens, or the other one, but not both.
             // For now, we can probably ignore this one.
@@ -66,7 +68,7 @@ namespace AdHocMAC.Nodes
 
         public void OnReceiveSuccess(Packet IncomingPacket)
         {
-            Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
+            if (DEBUG) Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
             if (IncomingPacket.To == mId && mMACProtocol.OnReceive(IncomingPacket))
             {
                 // To-Do: What do we want to do with "good" packets?
