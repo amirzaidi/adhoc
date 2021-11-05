@@ -1,5 +1,9 @@
 ﻿namespace AdHocMAC.Simulation
 {
+    /// <summary>
+    /// None of these callbacks should do heavy work, as the network waits for completion.
+    /// </summary>
+    /// <typeparam name="T">Type of packet that is transmitted.</typeparam>
     interface INode<T>
     {
         public int GetID();

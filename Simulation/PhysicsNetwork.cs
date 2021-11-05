@@ -20,6 +20,7 @@ namespace AdHocMAC.Simulation
         private readonly INetworkEventLogger<INode<T>> mLogger;
 
         private readonly double mRange; // Range in Point3D euclidian units.
+
         private double mTransmittedUnitsPerSecond = 16.0; // Characters sent per second.
         private double mTravelDistancePerSecond = 256.0; // Speed of light in this system.
 
@@ -31,65 +32,76 @@ namespace AdHocMAC.Simulation
 
         public async Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length, CancellationToken Token)
         {
-            if (!mNodes.TryGetValue(FromNode, out var nodeState))
+            if (!mNodes.TryGetValue(FromNode, out var fromNodeState))
             {
                 return;
             }
 
-            CancellationTokenSource CTSOutgoing() => CancellationTokenSource.CreateLinkedTokenSource(nodeState.PositionChangeCTS.Token, Token);
+            CancellationToken CTOutgoing() =>
+                CancellationTokenSource.CreateLinkedTokenSource(fromNodeState.PositionChangeCTS.Token, Token).Token;
+
             var signalDuration = Length / mTransmittedUnitsPerSecond;
 
             // Start a stopwatch for accurate time measurement.
             var stopWatch = new Stopwatch();
             stopWatch.Start();
+
+            // We increase the transmission count to ensure no data can be received.
             mLogger.BeginSend(FromNode);
+            IncreaseTransmissions(FromNode, fromNodeState);
 
             foreach (var KVP in mNodes)
             {
-                if (Equals(FromNode, KVP.Key))
+                // Ensure we have an in-memory representation.
+                var toNode = KVP.Key;
+                var toNodeState = KVP.Value;
+
+                if (Equals(FromNode, toNode))
                 {
+                    // Skip the simulation of sending to itself.
                     continue;
                 }
 
-                var KVPCopy = KVP; // Ensure we have an in-memory representation.
                 // "Start" a new thread to handle each point to point transmission.
                 _ = Task.Run(async () =>
                 {
                     var state = TransmissionState.NotArrived;
-                    var packetIfSuccessful = OutgoingPacket; // We set this to null when it should not be received.
+                    var shouldDeliverPacket = true;
 
-                    CancellationTokenSource CTSIncoming() => KVP.Value.PositionChangeCTS;
+                    var debugPrint = $"{FromNode.GetID()} -> {toNode.GetID()}";
+
+                    CancellationToken CTIncoming() => toNodeState.PositionChangeCTS.Token;
 
                     while (!Token.IsCancellationRequested)
                     {
-                        var CTS = CancellationTokenSource.CreateLinkedTokenSource(CTSOutgoing().Token, CTSIncoming().Token);
-                        var distance = Vector3D.Distance(nodeState.Position, KVPCopy.Value.Position);
+                        var linkToken = CancellationTokenSource.CreateLinkedTokenSource(CTOutgoing(), CTIncoming()).Token;
+                        var distance = Vector3D.Distance(fromNodeState.Position, toNodeState.Position);
                         var inRange = distance <= mRange;
 
                         var signalStartTime = distance / mTravelDistancePerSecond;
                         var signalEndTime = signalStartTime + signalDuration;
 
-                        Debug.WriteLine($"{KVPCopy.Key.GetID()}: Send Times [{signalStartTime}, {signalEndTime}]");
+                        Debug.WriteLine($"{debugPrint}: Send Times [{signalStartTime}, {signalEndTime}]");
 
                         switch (state)
                         {
                             // State 1: The packet has not reached the destination.
                             case TransmissionState.NotArrived:
-                                await WaitUntil(stopWatch, signalStartTime, CTS.Token);
-                                if (!CTS.Token.IsCancellationRequested)
+                                await WaitUntil(stopWatch, signalStartTime, linkToken);
+                                if (!linkToken.IsCancellationRequested)
                                 {
                                     if (inRange)
                                     {
-                                        IncreaseTransmissions(KVPCopy);
+                                        IncreaseTransmissions(toNode, toNodeState);
                                         state = TransmissionState.Ongoing;
 
-                                        Debug.WriteLine($"{KVPCopy.Key.GetID()}: NotArrived > Ongoing");
-                                        mLogger.BeginReceive(KVPCopy.Key, FromNode); // BeginReceive when we enter Ongoing.
+                                        Debug.WriteLine($"{debugPrint}: NotArrived > Ongoing");
+                                        mLogger.BeginReceive(toNode, FromNode); // BeginReceive when we enter Ongoing.
                                     }
                                     else
                                     {
                                         state = TransmissionState.Interrupted;
-                                        Debug.WriteLine($"{KVPCopy.Key.GetID()}: NotArrived > Interrupted");
+                                        Debug.WriteLine($"{debugPrint}: NotArrived > Interrupted");
                                     }
                                 }
                                 break;
@@ -98,22 +110,22 @@ namespace AdHocMAC.Simulation
                                 if (!inRange) // Out of range, switch to Interrupted and destroy the packet.
                                 {
                                     state = TransmissionState.Interrupted;
-                                    packetIfSuccessful = default; // We set this to null to indicate it was lost.
-                                    DecreaseTransmissions(KVPCopy, packetIfSuccessful);
+                                    shouldDeliverPacket = false;
+                                    DecreaseTransmissions(toNode, toNodeState, shouldDeliverPacket, OutgoingPacket);
 
-                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Interrupted");
-                                    mLogger.EndReceive(KVPCopy.Key, FromNode); // EndReceive when we leave Ongoing.
+                                    Debug.WriteLine($"{debugPrint}: Ongoing > Interrupted");
+                                    mLogger.EndReceive(toNode, FromNode); // EndReceive when we leave Ongoing.
 
                                     break;
                                 }
 
-                                await WaitUntil(stopWatch, signalEndTime, CTS.Token);
-                                if (!CTS.Token.IsCancellationRequested)
+                                await WaitUntil(stopWatch, signalEndTime, linkToken);
+                                if (!linkToken.IsCancellationRequested)
                                 {
-                                    DecreaseTransmissions(KVPCopy, packetIfSuccessful);
+                                    DecreaseTransmissions(toNode, toNodeState, shouldDeliverPacket, OutgoingPacket);
 
-                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Ongoing > Exit");
-                                    mLogger.EndReceive(KVPCopy.Key, FromNode); // EndReceive when we leave Ongoing.
+                                    Debug.WriteLine($"{debugPrint}: Ongoing > Exit");
+                                    mLogger.EndReceive(toNode, FromNode); // EndReceive when we leave Ongoing.
 
                                     return; // This is one of two exit conditions.
                                 }
@@ -123,18 +135,18 @@ namespace AdHocMAC.Simulation
                                 if (inRange) // In range, switch back to Ongoing, but the packet is still lost.
                                 {
                                     state = TransmissionState.Ongoing;
-                                    IncreaseTransmissions(KVPCopy);
+                                    IncreaseTransmissions(toNode, toNodeState);
 
-                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Ongoing");
-                                    mLogger.BeginReceive(KVPCopy.Key, FromNode); // BeginReceive when we enter Ongoing.
+                                    Debug.WriteLine($"{debugPrint}: Interrupted > Ongoing");
+                                    mLogger.BeginReceive(toNode, FromNode); // BeginReceive when we enter Ongoing.
 
                                     break;
                                 }
 
-                                await WaitUntil(stopWatch, signalEndTime, CTS.Token);
-                                if (!CTS.Token.IsCancellationRequested)
+                                await WaitUntil(stopWatch, signalEndTime, linkToken);
+                                if (!linkToken.IsCancellationRequested)
                                 {
-                                    Debug.WriteLine($"{KVPCopy.Key.GetID()}: Interrupted > Exit");
+                                    Debug.WriteLine($"{debugPrint}: Interrupted > Exit");
                                     return; // This is one of two exit conditions.
                                 }
                                 break;
@@ -143,8 +155,12 @@ namespace AdHocMAC.Simulation
                 });
             }
 
+            // Time until the sender is done transmitting.
             await WaitUntil(stopWatch, signalDuration, Token);
+
+            // We can start seeing incoming data now.
             mLogger.EndSend(FromNode);
+            DecreaseTransmissions(FromNode, fromNodeState, false, default);
         }
 
         private async Task WaitUntil(Stopwatch SW, double UntilTime, CancellationToken Token)
@@ -161,37 +177,37 @@ namespace AdHocMAC.Simulation
             }
         }
 
-        private void IncreaseTransmissions(KeyValuePair<INode<T>, NodeState<T>> KVP)
+        private void IncreaseTransmissions(INode<T> Node, NodeState<T> NodeState)
         {
             // Started transmission.
-            lock (KVP.Key) // Lock for thread-safety.
+            lock (NodeState) // Lock for thread-safety.
             {
-                if (++KVP.Value.OngoingTransmissions == 1)
+                if (++NodeState.OngoingTransmissions == 1)
                 {
-                    Task.Run(() => KVP.Key.OnReceiveStart());
+                    Node.OnReceiveStart();
                 }
                 else
                 {
-                    Task.Run(() => KVP.Key.OnReceiveCollide());
-                    KVP.Value.HasCollided = true; // Set this flag for the last transmission to see.
+                    Node.OnReceiveCollide();
+                    NodeState.HasCollided = true; // Set this flag for the last transmission to see.
                 }
             }
         }
 
-        private void DecreaseTransmissions(KeyValuePair<INode<T>, NodeState<T>> KVP, T PacketIfSuccessful)
+        private void DecreaseTransmissions(INode<T> Node, NodeState<T> NodeState, bool ShouldDeliverPacket, T Packet)
         {
             // Completed transmission.
-            lock (KVP.Key) // Lock for thread-safety.
+            lock (NodeState) // Lock for thread-safety.
             {
-                if (--KVP.Value.OngoingTransmissions == 0)
+                if (--NodeState.OngoingTransmissions == 0)
                 {
-                    if (!KVP.Value.HasCollided && PacketIfSuccessful != null)
+                    if (!NodeState.HasCollided && ShouldDeliverPacket)
                     {
-                        Task.Run(() => KVP.Key.OnReceiveSuccess(PacketIfSuccessful));
+                        Node.OnReceiveSuccess(Packet);
                     }
 
-                    Task.Run(() => KVP.Key.OnReceiveEnd());
-                    KVP.Value.HasCollided = false; // Reset this.
+                    Node.OnReceiveEnd();
+                    NodeState.HasCollided = false; // Reset this.
                 }
             }
         }

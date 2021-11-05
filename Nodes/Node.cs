@@ -41,7 +41,7 @@ namespace AdHocMAC.Nodes
                 {
                     From = mId,
                     To = mId + 1,
-                    Data = "Hello World!"
+                    Data = $"Hello World from {mId}!"
                 }, Token);
 
                 await Task.Delay(mRNG.Next(0, 7000), Token).IgnoreExceptions();
