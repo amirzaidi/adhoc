@@ -27,7 +27,7 @@ namespace AdHocMAC
         private readonly NodeVisualizer<INode<Packet>> mNodeVisualizer;
 
         // The real-time network simulation.
-        private readonly SimulatedNetwork<Packet> mSimulatedNetwork;
+        private readonly INetwork<Packet> mNetwork;
 
         // Prevent doing multiple Resets simultaneously.
         private readonly DuplicateRunDiscarder mReset;
@@ -37,7 +37,9 @@ namespace AdHocMAC
         private readonly List<Node> mNodes = new List<Node>();
         private readonly List<Task> mNodeThreads = new List<Task>();
 
-        private int mNodeCount = 10;
+        // Determined by UI slider.
+        private int mNodeCount;
+
         private double mPPersistency = 0.01;
         private double mRange = 200.0;
 
@@ -49,7 +51,7 @@ namespace AdHocMAC
                 Grid.Children,
                 (n1, x, y) =>
                 {
-                    var (added, removed) = mSimulatedNetwork.SetNodeAt(n1, Vector3D.Create(x, y));
+                    var (added, removed) = mNetwork.SetNodePosition(n1, Vector3D.Create(x, y));
                     added.ForEach(n2 => mNodeVisualizer.ConnectNodes(n1, n2));
                     removed.ForEach(n2 => mNodeVisualizer.DisconnectNodes(n1, n2));
                 },
@@ -58,7 +60,7 @@ namespace AdHocMAC
 
             var nodeVisualizerEvents = new NodeVisualizerEvents<INode<Packet>>(mNodeVisualizer);
 
-            mSimulatedNetwork = new SimulatedNetwork<Packet>(nodeVisualizerEvents, mRange);
+            mNetwork = new PhysicsNetwork<Packet>(nodeVisualizerEvents, mRange);
             mReset = new DuplicateRunDiscarder(Reset);
         }
 
@@ -81,7 +83,7 @@ namespace AdHocMAC
             }
 
             mNodeThreads.Clear();
-            mSimulatedNetwork.ClearNodes();
+            mNetwork.ClearNodes();
 
             mNodeCount = (int) NodeCount.Value;
             mLogHandler.OnDebug($"Creating {mNodeCount} new nodes");
@@ -104,7 +106,7 @@ namespace AdHocMAC
                 var node = new Node(i, protocol, new Random(mSeedGenerator.Next()));
 
                 // We set this afterwards because we need a reference to node.
-                protocol.SendAction = async (p, ct) => await mSimulatedNetwork.StartTransmission(node, p, Packet.GetLength(p), ct);
+                protocol.SendAction = async (p, ct) => await mNetwork.StartTransmission(node, p, Packet.GetLength(p), ct);
 
                 // Add newly created node.
                 nodes.Add(node);
@@ -129,7 +131,7 @@ namespace AdHocMAC
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            Routing.GetShortestPath(mNodes, n => mSimulatedNetwork.GetNodeLocation(n), mRange);
+            Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), mRange);
         }
     }
 }

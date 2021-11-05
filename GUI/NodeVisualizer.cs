@@ -123,7 +123,6 @@ namespace AdHocMAC.GUI
 
         private void AddNodes(List<T> Nodes)
         {
-            int elementNumber = 0;
             foreach (var node in Nodes)
             {
                 var panel = new StackPanel
@@ -140,7 +139,7 @@ namespace AdHocMAC.GUI
                 panel.MouseLeftButtonUp += Control_MouseLeftButtonUp;
                 panel.MouseMove += Control_MouseMove;
 
-                int elementId = elementNumber++;
+                int elementId = mGetNodeID(node);
                 var transform = new TranslateTransform
                 {
                     X = GRID_MARGIN + GRID_PANEL_SIZE * (elementId % ROW_PANEL_COUNT),
@@ -157,7 +156,7 @@ namespace AdHocMAC.GUI
 
                 var l = new Label
                 {
-                    Content = "#" + elementId,
+                    Content = elementId,
                     Padding = new Thickness(0, 5, 0, 0),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Top,
@@ -279,6 +278,15 @@ namespace AdHocMAC.GUI
             {
                 var c = value.Item2;
                 c.Fill = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+            }
+        }
+
+        public void ChangeNodeText(T n, string Text)
+        {
+            if (mNodeUIElements.TryGetValue(n, out (UIElement, Ellipse, Label) value))
+            {
+                var l = value.Item3;
+                l.Content = $"{mGetNodeID(n)}: {Text}";
             }
         }
 

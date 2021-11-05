@@ -31,16 +31,20 @@ namespace AdHocMAC.GUI
 
         public void BeginSend(T Sender)
         {
-            mVisualizer.RunOnUIThread(
-                () => mVisualizer.ChangeNodeColor(Sender, 0, 127, 255)
-            );
+            mVisualizer.RunOnUIThread(() =>
+            {
+                mVisualizer.ChangeNodeColor(Sender, 0, 127, 255);
+                mVisualizer.ChangeNodeText(Sender, "Sending");
+            });
         }
 
         public void EndSend(T Sender)
         {
-            mVisualizer.RunOnUIThread(
-                () => mVisualizer.ChangeNodeColor(Sender, 0, 0, 0)
-            );
+            mVisualizer.RunOnUIThread(() =>
+            {
+                mVisualizer.ChangeNodeColor(Sender, 0, 0, 0);
+                mVisualizer.ChangeNodeText(Sender, "Idle");
+            });
         }
     }
 }

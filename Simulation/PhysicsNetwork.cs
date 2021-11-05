@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AdHocMAC.Simulation
 {
-    class SimulatedNetwork<T>
+    class PhysicsNetwork<T> : INetwork<T>
     {
         private enum TransmissionState
         {
@@ -23,7 +23,7 @@ namespace AdHocMAC.Simulation
         private double mTransmittedUnitsPerSecond = 16.0; // Characters sent per second.
         private double mTravelDistancePerSecond = 256.0; // Speed of light in this system.
 
-        public SimulatedNetwork(INetworkEventLogger<INode<T>> Logger, double Range)
+        public PhysicsNetwork(INetworkEventLogger<INode<T>> Logger, double Range)
         {
             mLogger = Logger;
             mRange = Range;
@@ -196,6 +196,11 @@ namespace AdHocMAC.Simulation
             }
         }
 
+        public Vector3D GetNodePosition(INode<T> Node)
+        {
+            return mNodes[Node].Position;
+        }
+
         // Reuse these two variables for efficiency.
         private readonly List<INode<T>> mConnectedNodes = new List<INode<T>>();
         private readonly List<INode<T>> mDisconnectedNodes = new List<INode<T>>();
@@ -204,7 +209,7 @@ namespace AdHocMAC.Simulation
         /// Tells the medium that a node is at a given location.
         /// If the medium has not seen the node before, it will automatically register it.
         /// </summary>
-        public (List<INode<T>>, List<INode<T>>) SetNodeAt(INode<T> Node, Vector3D Point)
+        public (List<INode<T>>, List<INode<T>>) SetNodePosition(INode<T> Node, Vector3D Point)
         {
             mConnectedNodes.Clear();
             mDisconnectedNodes.Clear();
@@ -254,22 +259,6 @@ namespace AdHocMAC.Simulation
             return (mConnectedNodes, mDisconnectedNodes);
         }
 
-        public Vector3D GetNodeLocation(INode<T> Node)
-        {
-            return mNodes[Node].Position;
-        }
-
-        /// <summary>
-        /// Removes a node entirely.
-        /// </summary>
-        public void UnregisterNode(INode<T> Node)
-        {
-            if (!mNodes.Remove(Node))
-            {
-                throw new ArgumentException($"Node to be unregistered does not exist");
-            }
-        }
-        
         public void ClearNodes()
         {
             mNodes.Clear();
