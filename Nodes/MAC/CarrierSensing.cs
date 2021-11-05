@@ -14,7 +14,7 @@ namespace AdHocMAC.Nodes.MAC
         protected bool mIsChannelBusy;
 
         // We always have CA enabled to make it easier to implement.
-        private readonly CollisionAvoidance mCA = new CollisionAvoidance();
+        //private readonly CollisionAvoidance mCA = new CollisionAvoidance();
 
         public abstract Task Send(Packet OutgoingPacket, CancellationToken Token);
 

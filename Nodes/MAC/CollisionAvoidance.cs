@@ -1,10 +1,26 @@
-﻿namespace AdHocMAC.Nodes.MAC
-{
+﻿using AdHocMAC.Utility;
+using System;
+using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
+
     /// <summary>
     /// Contains the algorithm to handle back-off timers.
     /// </summary>
-    class CollisionAvoidance
+/*
+namespace AdHocMAC.Nodes.MAC
+{
+    class CollisionAvoidance : CarrierSensing
     {
-        // To-Do: Resend messages that do not receive an ACK in ... time.
+        public CollisionAvoidance():base()
+        {
+        }
+
+        public override async Task Send(Packet OutgoingPacket, CancellationToken Token)
+        {
+
+        }
     }
+
 }
+*/
