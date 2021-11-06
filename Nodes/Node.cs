@@ -5,6 +5,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace AdHocMAC.Nodes
 {
@@ -18,6 +19,8 @@ namespace AdHocMAC.Nodes
         private readonly int mId;
         private readonly IMACProtocol<Packet> mMACProtocol;
         private readonly Random mRNG;
+
+        private readonly BufferBlock<Packet> mPackets = new BufferBlock<Packet>();
 
         public Node(int Id, IMACProtocol<Packet> MACProtocol, Random RNG)
         {
@@ -34,6 +37,12 @@ namespace AdHocMAC.Nodes
             while (!Token.IsCancellationRequested)
             {
                 // To-Do: Put Routing Algorithm Here.
+
+                while (mPackets.Count > 0)
+                {
+                    // To-Do: What do we want to do with "good" packets?
+                    var packet = await mPackets.ReceiveAsync(Token);
+                }
 
                 await Task.Delay(mRNG.Next(0, 3000), Token).IgnoreExceptions();
 
@@ -71,8 +80,7 @@ namespace AdHocMAC.Nodes
             if (DEBUG) Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
             if (IncomingPacket.To == mId && mMACProtocol.OnReceive(IncomingPacket))
             {
-                // To-Do: What do we want to do with "good" packets?
-                // We should be able to call mMACProtocol.Send from here without issues.
+                mPackets.Post(IncomingPacket);
             }
         }
 

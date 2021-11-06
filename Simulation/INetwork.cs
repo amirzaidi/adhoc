@@ -8,7 +8,7 @@ namespace AdHocMAC.Simulation
 {
     interface INetwork<T>
     {
-        public Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length, CancellationToken Token);
+        public Task StartTransmission(INode<T> FromNode, T Packet, int Length, CancellationToken Token);
 
         public Vector3D GetNodePosition(INode<T> Node);
 

@@ -32,25 +32,24 @@ namespace AdHocMAC.Simulation
             mRange = Range;
         }
 
-        public async Task StartTransmission(INode<T> FromNode, T OutgoingPacket, int Length, CancellationToken Token)
+        public async Task StartTransmission(INode<T> FromNode, T Packet, int Length, CancellationToken Token)
         {
             if (!mNodes.TryGetValue(FromNode, out var fromNodeState))
             {
                 return;
             }
 
-            CancellationToken CTOutgoing() =>
-                CancellationTokenSource.CreateLinkedTokenSource(fromNodeState.PositionChangeCTS.Token, Token).Token;
+            CancellationToken CTOutgoing() => fromNodeState.PositionChangeCTS.Token;
 
             var signalDuration = Length / mTransmittedUnitsPerSecond;
 
             // Start a stopwatch for accurate time measurement.
-            var stopWatch = new Stopwatch();
-            stopWatch.Start();
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
 
             // We increase the transmission count to ensure no data can be received.
             mLogger.BeginSend(FromNode);
-            IncreaseTransmissions(FromNode, fromNodeState);
+            AddTransmission(FromNode, FromNode, fromNodeState, Packet);
 
             foreach (var KVP in mNodes)
             {
@@ -65,104 +64,109 @@ namespace AdHocMAC.Simulation
                 }
 
                 // "Start" a new thread to handle each point to point transmission.
-                _ = Task.Run(async () =>
-                {
-                    var state = TransmissionState.NotArrived;
-                    var shouldDeliverPacket = true;
-
-                    var debugPrint = $"{FromNode.GetID()} -> {toNode.GetID()}";
-
-                    CancellationToken CTIncoming() => toNodeState.PositionChangeCTS.Token;
-
-                    while (!Token.IsCancellationRequested)
-                    {
-                        var linkToken = CancellationTokenSource.CreateLinkedTokenSource(CTOutgoing(), CTIncoming()).Token;
-                        var distance = Vector3D.Distance(fromNodeState.Position, toNodeState.Position);
-                        var inRange = distance <= mRange;
-
-                        var signalStartTime = distance / mTravelDistancePerSecond;
-                        var signalEndTime = signalStartTime + signalDuration;
-
-                        if (DEBUG) Debug.WriteLine($"{debugPrint}: Send Times [{signalStartTime}, {signalEndTime}]");
-
-                        switch (state)
-                        {
-                            // State 1: The packet has not reached the destination.
-                            case TransmissionState.NotArrived:
-                                await WaitUntil(stopWatch, signalStartTime, linkToken);
-                                if (!linkToken.IsCancellationRequested)
-                                {
-                                    if (inRange)
-                                    {
-                                        IncreaseTransmissions(toNode, toNodeState);
-                                        state = TransmissionState.Ongoing;
-
-                                        if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Ongoing");
-                                        mLogger.BeginReceive(toNode, FromNode); // BeginReceive when we enter Ongoing.
-                                    }
-                                    else
-                                    {
-                                        state = TransmissionState.Interrupted;
-                                        if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Interrupted");
-                                    }
-                                }
-                                break;
-                            // State 2: The packet has started reaching the destination with enough signal strength.
-                            case TransmissionState.Ongoing:
-                                if (!inRange) // Out of range, switch to Interrupted and destroy the packet.
-                                {
-                                    state = TransmissionState.Interrupted;
-                                    shouldDeliverPacket = false;
-                                    DecreaseTransmissions(toNode, toNodeState, shouldDeliverPacket, OutgoingPacket);
-
-                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Ongoing > Interrupted");
-                                    mLogger.EndReceive(toNode, FromNode); // EndReceive when we leave Ongoing.
-
-                                    break;
-                                }
-
-                                await WaitUntil(stopWatch, signalEndTime, linkToken);
-                                if (!linkToken.IsCancellationRequested)
-                                {
-                                    DecreaseTransmissions(toNode, toNodeState, shouldDeliverPacket, OutgoingPacket);
-
-                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Ongoing > Exit");
-                                    mLogger.EndReceive(toNode, FromNode); // EndReceive when we leave Ongoing.
-
-                                    return; // This is one of two exit conditions.
-                                }
-                                break;
-                            // State 3: The packet has started reaching the destination, but the signal strength is too low.
-                            case TransmissionState.Interrupted:
-                                if (inRange) // In range, switch back to Ongoing, but the packet is still lost.
-                                {
-                                    state = TransmissionState.Ongoing;
-                                    IncreaseTransmissions(toNode, toNodeState);
-
-                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Ongoing");
-                                    mLogger.BeginReceive(toNode, FromNode); // BeginReceive when we enter Ongoing.
-
-                                    break;
-                                }
-
-                                await WaitUntil(stopWatch, signalEndTime, linkToken);
-                                if (!linkToken.IsCancellationRequested)
-                                {
-                                    if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Exit");
-                                    return; // This is one of two exit conditions.
-                                }
-                                break;
-                        }
-                    }
-                });
+                _ = Task.Run(async () => await TransmitOverLink(
+                    FromNode, fromNodeState, toNode, toNodeState,
+                    stopwatch, signalDuration, Packet, CTOutgoing, Token
+                ));
             }
 
             // Time until the sender is done transmitting.
-            await WaitUntil(stopWatch, signalDuration, Token);
+            await WaitUntil(stopwatch, signalDuration, Token);
 
             // We can start seeing incoming data now.
             mLogger.EndSend(FromNode);
-            DecreaseTransmissions(FromNode, fromNodeState, false, default);
+            RemoveTransmission(FromNode, FromNode, fromNodeState, Packet, false);
+        }
+
+        private async Task TransmitOverLink(INode<T> FromNode, NodeState<T> FromNodeState, INode<T> ToNode, NodeState<T> ToNodeState,
+            Stopwatch SW, double SignalDuration, T Packet, Func<CancellationToken> CTOutgoing, CancellationToken Token)
+        {
+            var state = TransmissionState.NotArrived;
+            var packetValid = true;
+
+            var debugPrint = $"{FromNode.GetID()} -> {ToNode.GetID()}";
+
+            CancellationToken CTIncoming() => CancellationTokenSource.CreateLinkedTokenSource(ToNodeState.PositionChangeCTS.Token, Token).Token;
+            while (!Token.IsCancellationRequested)
+            {
+                var linkToken = CancellationTokenSource.CreateLinkedTokenSource(CTOutgoing(), CTIncoming()).Token;
+                var distance = Vector3D.Distance(FromNodeState.Position, ToNodeState.Position);
+                var inRange = distance <= mRange;
+
+                var signalStartTime = distance / mTravelDistancePerSecond;
+                var signalEndTime = signalStartTime + SignalDuration;
+
+                if (DEBUG) Debug.WriteLine($"{debugPrint}: Send Times [{signalStartTime}, {signalEndTime}]");
+
+                switch (state)
+                {
+                    // State 1: The packet has not reached the destination.
+                    case TransmissionState.NotArrived:
+                        await WaitUntil(SW, signalStartTime, linkToken);
+                        if (!linkToken.IsCancellationRequested)
+                        {
+                            if (inRange)
+                            {
+                                AddTransmission(FromNode, ToNode, ToNodeState, Packet);
+                                state = TransmissionState.Ongoing;
+
+                                if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Ongoing");
+                                mLogger.BeginReceive(ToNode, FromNode); // BeginReceive when we enter Ongoing.
+                            }
+                            else
+                            {
+                                state = TransmissionState.Interrupted;
+                                if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Interrupted");
+                            }
+                        }
+                        break;
+                    // State 2: The packet has started reaching the destination with enough signal strength.
+                    case TransmissionState.Ongoing:
+                        if (!inRange) // Out of range, switch to Interrupted and destroy the packet.
+                        {
+                            state = TransmissionState.Interrupted;
+                            packetValid = false;
+                            RemoveTransmission(FromNode, ToNode, ToNodeState, Packet, packetValid);
+
+                            if (DEBUG) Debug.WriteLine($"{debugPrint}: Ongoing > Interrupted");
+                            mLogger.EndReceive(ToNode, FromNode); // EndReceive when we leave Ongoing.
+
+                            break;
+                        }
+
+                        await WaitUntil(SW, signalEndTime, linkToken);
+                        if (!linkToken.IsCancellationRequested)
+                        {
+                            RemoveTransmission(FromNode, ToNode, ToNodeState, Packet, packetValid);
+
+                            if (DEBUG) Debug.WriteLine($"{debugPrint}: Ongoing > Exit");
+                            mLogger.EndReceive(ToNode, FromNode); // EndReceive when we leave Ongoing.
+
+                            return; // This is one of two exit conditions.
+                        }
+                        break;
+                    // State 3: The packet has started reaching the destination, but the signal strength is too low.
+                    case TransmissionState.Interrupted:
+                        if (inRange) // In range, switch back to Ongoing, but the packet is still lost.
+                        {
+                            state = TransmissionState.Ongoing;
+                            AddTransmission(FromNode, ToNode, ToNodeState, Packet);
+
+                            if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Ongoing");
+                            mLogger.BeginReceive(ToNode, FromNode); // BeginReceive when we enter Ongoing.
+
+                            break;
+                        }
+
+                        await WaitUntil(SW, signalEndTime, linkToken);
+                        if (!linkToken.IsCancellationRequested)
+                        {
+                            if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Exit");
+                            return; // This is one of two exit conditions.
+                        }
+                        break;
+                }
+            }
         }
 
         private async Task WaitUntil(Stopwatch SW, double UntilTime, CancellationToken Token)
@@ -179,37 +183,45 @@ namespace AdHocMAC.Simulation
             }
         }
 
-        private void IncreaseTransmissions(INode<T> Node, NodeState<T> NodeState)
+        private void AddTransmission(INode<T> FromNode, INode<T> ToNode, NodeState<T> ToNodeState, T Packet)
         {
             // Started transmission.
-            lock (NodeState) // Lock for thread-safety.
+            lock (ToNodeState) // Lock for thread-safety.
             {
-                if (++NodeState.OngoingTransmissions == 1)
+                var (prevTransmissions, newTransmissions) = ToNodeState.AddTransmission(FromNode.GetID(), Packet);
+
+                // If this is adding a new transmission.
+                if (!prevTransmissions.Contains(FromNode.GetID()))
                 {
-                    Node.OnReceiveStart();
-                }
-                else
-                {
-                    Node.OnReceiveCollide();
-                    NodeState.HasCollided = true; // Set this flag for the last transmission to see.
+                    if (newTransmissions.Count == 1)
+                    {
+                        ToNode.OnReceiveStart();
+                    }
+                    else
+                    {
+                        ToNode.OnReceiveCollide();
+                        ToNodeState.HasCollided = true; // Set this flag for the last transmission to see.
+                    }
                 }
             }
         }
 
-        private void DecreaseTransmissions(INode<T> Node, NodeState<T> NodeState, bool ShouldDeliverPacket, T Packet)
+        private void RemoveTransmission(INode<T> FromNode, INode<T> ToNode, NodeState<T> ToNodeState, T Packet, bool PacketValid)
         {
             // Completed transmission.
-            lock (NodeState) // Lock for thread-safety.
+            lock (ToNodeState) // Lock for thread-safety.
             {
-                if (--NodeState.OngoingTransmissions == 0)
-                {
-                    if (!NodeState.HasCollided && ShouldDeliverPacket)
-                    {
-                        Node.OnReceiveSuccess(Packet);
-                    }
+                var (prevTransmissions, newTransmissions) = ToNodeState.RemoveTransmission(FromNode.GetID(), Packet);
 
-                    Node.OnReceiveEnd();
-                    NodeState.HasCollided = false; // Reset this.
+                if (!ToNodeState.HasCollided && PacketValid)
+                {
+                    ToNode.OnReceiveSuccess(Packet);
+                }
+
+                if (newTransmissions.Count == 0)
+                {
+                    ToNode.OnReceiveEnd();
+                    ToNodeState.HasCollided = false; // Reset this.
                 }
             }
         }
