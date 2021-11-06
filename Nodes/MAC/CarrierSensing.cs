@@ -11,12 +11,19 @@ namespace AdHocMAC.Nodes.MAC
     abstract class CarrierSensing : IMACProtocol<Packet>
     {
         public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => Debug.WriteLine("[CSMA] Simulated Send");
-        protected bool mIsChannelBusy;
 
         // We always have CA enabled to make it easier to implement.
         private readonly CollisionAvoidance mCA = new CollisionAvoidance();
 
-        public abstract Task Send(Packet OutgoingPacket, CancellationToken Token);
+        private Task mSend = Task.CompletedTask;
+        private bool mIsChannelBusy;
+
+        public void SendInBackground(Packet OutgoingPacket, CancellationToken Token)
+        {
+            mSend = mSend.ContinueWith(async _ => await SendWhenChannelFree(OutgoingPacket, Token));
+        }
+
+        protected abstract Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token);
 
         public bool OnReceive(Packet IncomingPacket)
         {
@@ -40,5 +47,7 @@ namespace AdHocMAC.Nodes.MAC
         {
             mIsChannelBusy = false;
         }
+
+        protected bool IsChannelBusy() => mIsChannelBusy;
     }
 }

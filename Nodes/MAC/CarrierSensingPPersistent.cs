@@ -8,59 +8,55 @@ namespace AdHocMAC.Nodes.MAC
 {
     class CarrierSensingPPersistent : CarrierSensing
     {
+        private const bool DEBUG = false;
+
+        private const int RNG_UPPER_BOUND = 10000;
+
+        private const double SLOT_SECONDS = 2.0;
+        private const long SLOT_TICKS = (long)(TimeSpan.TicksPerSecond * SLOT_SECONDS);
+
         private readonly Random mRNG;
-        private readonly int mMinDelay, mMaxDelay;
         private readonly double mPPersistency;
-        private readonly SemaphoreSlim mLock = new SemaphoreSlim(1);
-        private Task mSend = Task.CompletedTask;
 
-        public CarrierSensingPPersistent(double PPersistency, Random RNG, int MinDelay, int MaxDelay) : base()
+        public CarrierSensingPPersistent(Random RNG, double PPersistency) : base()
         {
-            mPPersistency = PPersistency;
             mRNG = RNG;
-            mMinDelay = MinDelay;
-            mMaxDelay = MaxDelay;
+            mPPersistency = PPersistency;
         }
 
-        public override async Task Send(Packet OutgoingPacket, CancellationToken Token)
-        {
-            if (!mIsChannelBusy)
-            {
-                await mLock.WaitAsync();
-                mSend = mSend.ContinueWith(async _ => await SendWhenChannelFree(OutgoingPacket, Token));
-                mLock.Release();
-
-            }
-        }
-        private async Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token)
+        protected override async Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token)
         {
             var time = DateTime.Now;
             int attempt = 0;
 
             while (!Token.IsCancellationRequested)
             {
-                if (mIsChannelBusy)
+                if (IsChannelBusy())
                 {
-                    Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {attempt} to send");
-                    attempt++;
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {++attempt} to send");
+                    await WaitUntilNextSlot(Token);
+                }
+                else if (mRNG.Next(0, RNG_UPPER_BOUND) / (double)RNG_UPPER_BOUND >= mPPersistency)
+                {
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] 1-P NonBusy NonSent Retrying");
+                    await WaitUntilNextSlot(Token);
                 }
                 else
                 {
-                    if (mRNG.Next(0, 100) < (int)mPPersistency)
-                    {
-                        await SendAction(OutgoingPacket, Token);
-                        Debug.WriteLine($"[{OutgoingPacket.From}] P NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
-                        break;
-                    }
-                    else
-                    {
-                        Debug.WriteLine($"[{OutgoingPacket.From}] 1-P NonBusy NonSent Retrying");
-                        Debug.WriteLine($"[{OutgoingPacket.From}] Awaiting random");
-                        var sleeper = Task.Delay(mRNG.Next(mMinDelay, mMaxDelay), Token).IgnoreExceptions();
-                        await sleeper;
-                    }
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] P NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
+                    await SendAction(OutgoingPacket, Token);
+                    break;
                 }
             }
+        }
+
+        private async Task WaitUntilNextSlot(CancellationToken Token)
+        {
+            var currTime = DateTime.Now;
+            var ticksToNextSlot = SLOT_TICKS - (currTime.Ticks % SLOT_TICKS);
+            var msToNextSlot = ticksToNextSlot / (double)TimeSpan.TicksPerMillisecond;
+
+            await Task.Delay((int)Math.Ceiling(msToNextSlot), Token).IgnoreExceptions();
         }
     }
 }

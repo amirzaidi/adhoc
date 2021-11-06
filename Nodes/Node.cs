@@ -52,7 +52,7 @@ namespace AdHocMAC.Nodes
 
                 // Send a Hello World packet to the node with ID+1.
                 // The basic node code does not bother with how sending is handled.
-                await mMACProtocol.Send(new Packet
+                mMACProtocol.SendInBackground(new Packet
                 {
                     From = mId,
                     To = (mId + 1) % mNodeCount,

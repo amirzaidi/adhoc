@@ -13,9 +13,6 @@ namespace AdHocMAC.Nodes.MAC
         private readonly Random mRNG;
         private readonly int mMinDelay, mMaxDelay;
 
-        private readonly SemaphoreSlim mLock = new SemaphoreSlim(1);
-        private Task mSend = Task.CompletedTask;
-
         public CarrierSensingNonPersistent(Random RNG, int MinDelay, int MaxDelay) : base()
         {
             mRNG = RNG;
@@ -23,21 +20,14 @@ namespace AdHocMAC.Nodes.MAC
             mMaxDelay = MaxDelay;
         }
 
-        public override async Task Send(Packet OutgoingPacket, CancellationToken Token)
-        {
-            await mLock.WaitAsync();
-            mSend = mSend.ContinueWith(async _ => await SendWhenChannelFree(OutgoingPacket, Token));
-            mLock.Release();
-        }
-
-        private async Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token)
+        protected override async Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token)
         {
             var time = DateTime.Now;
             int attempt = 0;
 
             while (!Token.IsCancellationRequested)
             {
-                if (mIsChannelBusy)
+                if (IsChannelBusy())
                 {
                     if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {attempt} to send");
                     if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] Awaiting random");

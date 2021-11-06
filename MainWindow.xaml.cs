@@ -40,7 +40,9 @@ namespace AdHocMAC
         // Determined by UI slider.
         private int mNodeCount;
 
-        private double mPPersistency = 0.01;
+        private int mMinDelay = 100;
+        private int mMaxDelay = 500;
+        private double mPPersistency = 0.4;
         private double mRange = 200.0;
 
         public MainWindow()
@@ -103,8 +105,9 @@ namespace AdHocMAC
                 );
                 */
 
-                //var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), 100, 500);
-                var protocol = new CarrierSensingPPersistent(40.0, new Random(mSeedGenerator.Next()), 100, 500);
+                //var protocol = new Aloha();
+                //var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), mMinDelay, mMaxDelay);
+                var protocol = new CarrierSensingPPersistent(new Random(mSeedGenerator.Next()), mPPersistency);
                 var node = new Node(i, mNodeCount, protocol, new Random(mSeedGenerator.Next()));
 
                 // We set this afterwards because we need a reference to node.

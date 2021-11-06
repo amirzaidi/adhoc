@@ -8,14 +8,16 @@ namespace AdHocMAC.Nodes.MAC
     {
         public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => { };
 
-        public async Task Send(Packet OutgoingPacket, CancellationToken Token)
+        private Task mSend = Task.CompletedTask;
+
+        public void SendInBackground(Packet OutgoingPacket, CancellationToken Token)
         {
-            await SendAction(OutgoingPacket, Token);
+            mSend = mSend.ContinueWith(async _ => await SendAction(OutgoingPacket, Token));
         }
 
         public bool OnReceive(Packet IncomingPacket)
         {
-            return false;
+            return true;
         }
 
         public void OnChannelBusy()
