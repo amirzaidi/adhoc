@@ -15,11 +15,14 @@ namespace AdHocMAC.Nodes.MAC
     {
         private const bool DEBUG = false;
 
-        private const int TIMEOUT_MS = 2500;
+        private const int MIN_TIMEOUT_MS = 1000;
+        private const int MAX_TIMEOUT_MS = 8 * MIN_TIMEOUT_MS;
 
         // To-Do: Fix the inefficiency of doing list iteration on every packet.
-        private List<(int, int)> mReceivedPacketIds = new List<(int, int)>();
-        private Dictionary<(int, int), CancellationTokenSource> mRunningTimers = new Dictionary<(int, int), CancellationTokenSource>();
+        private readonly List<(int, int)> mReceivedPacketIds = new List<(int, int)>();
+        private readonly Dictionary<(int, int), CancellationTokenSource> mRunningTimers = new Dictionary<(int, int), CancellationTokenSource>();
+
+        private int mTimeout = MIN_TIMEOUT_MS;
 
         // Used to prevent reprocessing duplicate packets.
         public bool TryAddUniquePacketId(int FromNodeId, int Seq)
@@ -44,11 +47,20 @@ namespace AdHocMAC.Nodes.MAC
             Task.Run(async () =>
             {
                 var CT = CancellationTokenSource.CreateLinkedTokenSource(CTS.Token, Token).Token;
-                await Task.Delay(TIMEOUT_MS, CT).IgnoreExceptions();
+                await Task.Delay(mTimeout, CT).IgnoreExceptions();
                 mRunningTimers.Remove(tuple); // Automatically remove the timer when done.
 
-                if (!CT.IsCancellationRequested)
+                if (CT.IsCancellationRequested)
                 {
+                    mTimeout = MIN_TIMEOUT_MS;
+                }
+                else
+                {
+                    if (mTimeout < MAX_TIMEOUT_MS)
+                    {
+                        mTimeout *= 2;
+                    }
+
                     OnTimeout();
                 }
             });
