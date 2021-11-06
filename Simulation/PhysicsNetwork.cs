@@ -23,8 +23,8 @@ namespace AdHocMAC.Simulation
 
         private readonly double mRange; // Range in Point3D euclidian units.
 
-        private double mTransmittedUnitsPerSecond = 64.0; // Characters sent per second.
-        private double mTravelDistancePerSecond = 1024.0; // Speed of light in this system.
+        private double mTransmittedUnitsPerSecond = 256.0; // Characters sent per second.
+        private double mTravelDistancePerSecond = 2048.0; // Speed of light in this system.
 
         public PhysicsNetwork(INetworkEventLogger<INode<T>> Logger, double Range)
         {

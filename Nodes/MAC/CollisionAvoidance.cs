@@ -37,40 +37,51 @@ namespace AdHocMAC.Nodes.MAC
             return true;
         }
 
-        // Used to time sending back ACKs.
-        public void StartPacketTimer(int To, int Seq, Action OnTimeout, CancellationToken Token)
+        public void CreatePacketTimer(int To, int Seq)
         {
-            var CTS = new CancellationTokenSource();
-            var tuple = (To, Seq);
-            mRunningTimers[tuple] = CTS; // Can overwrite previous timer.
+            mRunningTimers[(To, Seq)] = new CancellationTokenSource();
+        }
 
-            Task.Run(async () =>
+        // Used to time sending back ACKs.
+        public async Task WaitPacketTimer(int To, int Seq, Action OnTimeout, CancellationToken Token)
+        {
+            var tuple = (To, Seq);
+            if (mRunningTimers.TryGetValue(tuple, out var CTS))
             {
                 var CT = CancellationTokenSource.CreateLinkedTokenSource(CTS.Token, Token).Token;
                 await Task.Delay(mTimeout, CT).IgnoreExceptions();
 
                 if (CT.IsCancellationRequested)
                 {
-                    mRunningTimers.Remove(tuple); // Automatically remove the timer when done.
-                    mTimeout = MIN_TIMEOUT_MS;
+                    // To-Do: Find out better BEB algorithm without lock.
+                    lock (this)
+                    {
+                        mTimeout = MIN_TIMEOUT_MS;
+                    }
                 }
                 else
                 {
-                    if (mTimeout < MAX_TIMEOUT_MS)
+                    lock (this)
                     {
-                        mTimeout *= 2;
+                        if (mTimeout < MAX_TIMEOUT_MS)
+                        {
+                            mTimeout *= 2;
+                        }
                     }
 
                     OnTimeout();
                 }
-            });
+            }
         }
 
-        public void StopPacketTimer(int To, int Seq)
+        public void CancelPacketTimer(int To, int Seq)
         {
-            if (mRunningTimers.TryGetValue((To, Seq), out var CTS))
+            var tuple = (To, Seq);
+            if (mRunningTimers.TryGetValue(tuple, out var CTS))
             {
                 CTS.Cancel();
+                mRunningTimers.Remove(tuple); // Automatically remove the timer when done.
+
                 if (DEBUG) Debug.WriteLine($"Stopped ACK timer [{To}, {Seq}]");
             }
             else

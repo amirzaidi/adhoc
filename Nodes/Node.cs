@@ -54,7 +54,7 @@ namespace AdHocMAC.Nodes
                             case PacketType.New:
                                 // To-Do: What do we want to do with unseen packets, other than send an ACK?
                                 ReplyACK(packet, Token);
-                                Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                                if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
 
                                 var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
                                 log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
@@ -63,11 +63,11 @@ namespace AdHocMAC.Nodes
                             case PacketType.Old:
                                 // Send another ACK for these.
                                 ReplyACK(packet, Token);
-                                Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                                if (DEBUG) Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
                                 break;
                             case PacketType.Control:
                                 // Successful packet.
-                                Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
+                                if (DEBUG) Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
                                 break;
                         }
                     }
@@ -76,7 +76,7 @@ namespace AdHocMAC.Nodes
                         var packet = evTimeout.OutgoingPacket;
                         packet.RetryAttempts += 1;
                         EnqueueSend(packet, Token);
-                        Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                        if (DEBUG) Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
                     }
                 }
 
@@ -87,7 +87,7 @@ namespace AdHocMAC.Nodes
                 {
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.
-                    Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
+                    if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello World from {mId}!", Token);
                 }
 

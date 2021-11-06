@@ -16,23 +16,29 @@ namespace AdHocMAC.Nodes.MAC
         private readonly CollisionAvoidance mCA = new CollisionAvoidance();
 
         private Task mSend = Task.CompletedTask;
-        private int mBacklog;
         private bool mIsChannelBusy;
 
         public void SendInBackground(Packet OutgoingPacket, Action OnTimeout, CancellationToken Token)
         {
-            Interlocked.Increment(ref mBacklog);
+            if (!OutgoingPacket.ACK)
+            {
+                mCA.CreatePacketTimer(OutgoingPacket.To, OutgoingPacket.Seq);
+            }
+
             mSend = mSend.ContinueWith(async _ =>
             {
                 await SendWhenChannelFree(OutgoingPacket, Token);
-                mCA.StartPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, Token);
-                Interlocked.Decrement(ref mBacklog);
+
+                if (!OutgoingPacket.ACK)
+                {
+                    _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, Token));
+                }
             });
         }
 
         public int BacklogCount()
         {
-            return mBacklog + mCA.BacklogCount();
+            return mCA.BacklogCount();
         }
 
         protected abstract Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token);
@@ -41,7 +47,7 @@ namespace AdHocMAC.Nodes.MAC
         {
             if (IncomingPacket.ACK)
             {
-                mCA.StopPacketTimer(IncomingPacket.From, IncomingPacket.Seq);
+                mCA.CancelPacketTimer(IncomingPacket.From, IncomingPacket.Seq);
                 return PacketType.Control;
             }
 
