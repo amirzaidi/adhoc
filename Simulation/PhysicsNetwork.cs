@@ -254,7 +254,7 @@ namespace AdHocMAC.Simulation
 
                 foreach (var node in mNodes)
                 {
-                    if (!Equals(node, Node))
+                    if (!Equals(node.Key, Node))
                     {
                         var wasInRange = Vector3D.Distance(nodeState.Position, node.Value.Position) <= mRange;
                         var isInRange = Vector3D.Distance(Point, node.Value.Position) <= mRange;
