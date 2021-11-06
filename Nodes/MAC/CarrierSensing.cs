@@ -16,25 +16,38 @@ namespace AdHocMAC.Nodes.MAC
         private readonly CollisionAvoidance mCA = new CollisionAvoidance();
 
         private Task mSend = Task.CompletedTask;
+        private int mBacklog;
         private bool mIsChannelBusy;
 
-        public void SendInBackground(Packet OutgoingPacket, CancellationToken Token)
+        public void SendInBackground(Packet OutgoingPacket, Action OnTimeout, CancellationToken Token)
         {
-            mSend = mSend.ContinueWith(async _ => await SendWhenChannelFree(OutgoingPacket, Token));
+            Interlocked.Increment(ref mBacklog);
+            mSend = mSend.ContinueWith(async _ =>
+            {
+                await SendWhenChannelFree(OutgoingPacket, Token);
+                mCA.StartPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, Token);
+                Interlocked.Decrement(ref mBacklog);
+            });
+        }
+
+        public int BacklogCount()
+        {
+            return mBacklog + mCA.BacklogCount();
         }
 
         protected abstract Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token);
 
-        public bool OnReceive(Packet IncomingPacket)
+        public PacketType OnReceive(Packet IncomingPacket)
         {
-            if (IncomingPacket.Data == "ACK")
+            if (IncomingPacket.ACK)
             {
-                // To-Do: Use the CA protocol.
-                return false;
+                mCA.StopPacketTimer(IncomingPacket.From, IncomingPacket.Seq);
+                return PacketType.Control;
             }
 
-            // We do not have ACKs yet, so we can assume every incoming packet is valid.
-            return true;
+            return mCA.TryAddUniquePacketId(IncomingPacket.From, IncomingPacket.Seq)
+                ? PacketType.New
+                : PacketType.Old;
         }
 
         // To-Do: Maybe combine OnChannelBusy and OnChannelFree into one method.

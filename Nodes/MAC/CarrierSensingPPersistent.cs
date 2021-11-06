@@ -12,7 +12,7 @@ namespace AdHocMAC.Nodes.MAC
 
         private const int RNG_UPPER_BOUND = 10000;
 
-        private const double SLOT_SECONDS = 2.0;
+        private const double SLOT_SECONDS = 0.5;
         private const long SLOT_TICKS = (long)(TimeSpan.TicksPerSecond * SLOT_SECONDS);
 
         private readonly Random mRNG;

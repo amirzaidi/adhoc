@@ -9,15 +9,26 @@ namespace AdHocMAC.Nodes.MAC
         public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => { };
 
         private Task mSend = Task.CompletedTask;
+        private int mBacklog;
 
-        public void SendInBackground(Packet OutgoingPacket, CancellationToken Token)
+        public void SendInBackground(Packet OutgoingPacket, Action OnTimeout, CancellationToken Token)
         {
-            mSend = mSend.ContinueWith(async _ => await SendAction(OutgoingPacket, Token));
+            Interlocked.Increment(ref mBacklog);
+            mSend = mSend.ContinueWith(async _ =>
+            {
+                await SendAction(OutgoingPacket, Token);
+                Interlocked.Decrement(ref mBacklog);
+            });
         }
 
-        public bool OnReceive(Packet IncomingPacket)
+        public int BacklogCount()
         {
-            return true;
+            return mBacklog;
+        }
+
+        public PacketType OnReceive(Packet IncomingPacket)
+        {
+            return PacketType.New;
         }
 
         public void OnChannelBusy()

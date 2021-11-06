@@ -21,7 +21,8 @@ namespace AdHocMAC.Nodes
         private readonly IMACProtocol<Packet> mMACProtocol;
         private readonly Random mRNG;
 
-        private readonly BufferBlock<Packet> mPackets = new BufferBlock<Packet>();
+        private readonly BufferBlock<object> mEvents = new BufferBlock<object>();
+        private int mSequenceNumber;
 
         public Node(int Id, int NodeCount, IMACProtocol<Packet> MACProtocol, Random RNG)
         {
@@ -36,31 +37,97 @@ namespace AdHocMAC.Nodes
         /// </summary>
         public async Task Loop(CancellationToken Token)
         {
+            long loopIteration = 0;
             while (!Token.IsCancellationRequested)
             {
-                // To-Do: Put Routing Algorithm Here.
-
-                while (mPackets.Count > 0)
+                // Handle all incoming messages and timeouts here.
+                while (mEvents.Count > 0)
                 {
-                    var packet = await mPackets.ReceiveAsync(Token);
-
-                    // To-Do: What do we want to do with "good" packets?
-                    Debug.WriteLine($"{mId}: PACKET FOR ME [{packet.From}: {packet.Data}]");
+                    var ev = await mEvents.ReceiveAsync(Token);
+                    if (ev is PacketReceived evReceived)
+                    {
+                        var packet = evReceived.IncomingPacket;
+                        switch (mMACProtocol.OnReceive(packet))
+                        {
+                            case PacketType.New:
+                                // To-Do: What do we want to do with unseen packets, other than send an ACK?
+                                ReplyACK(packet, Token);
+                                Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                                break;
+                            case PacketType.Old:
+                                // Send another ACK for these.
+                                ReplyACK(packet, Token);
+                                Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                                break;
+                            case PacketType.Control:
+                                // Successful packet.
+                                Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
+                                break;
+                        }
+                    }
+                    else if (ev is FailedTransmission evTimeout)
+                    {
+                        var packet = evTimeout.OutgoingPacket;
+                        EnqueueSend(packet, Token);
+                        Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                    }
                 }
 
-                await Task.Delay(mRNG.Next(0, 3000), Token).IgnoreExceptions();
+                // To-Do: Implement Routing Algorithm Here.
 
-                // Send a Hello World packet to the node with ID+1.
-                // The basic node code does not bother with how sending is handled.
-                mMACProtocol.SendInBackground(new Packet
+                // Basic logic: whenever there is no message in the queue, we send a new one.
+                if (mMACProtocol.BacklogCount() == 0)
                 {
-                    From = mId,
-                    To = (mId + 1) % mNodeCount,
-                    Data = $"Hello World from {mId}!"
-                }, Token);
+                    // Send a Hello World packet to the node with ID+1.
+                    // The basic node code does not bother with how sending is handled.
+                    Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
+                    EnqueueSend((mId + 1) % mNodeCount, $"Hello World from {mId}!", Token);
+                }
 
-                await Task.Delay(mRNG.Next(0, 7000), Token).IgnoreExceptions();
+                loopIteration += 1;
+                await Task.Delay(mRNG.Next(50, 100), Token).IgnoreExceptions(); // Add some randomness for timing.
             }
+        }
+
+        // Call this only from within the Loop().
+        private void EnqueueSend(int To, string Data, CancellationToken Token)
+        {
+            EnqueueSend(new Packet
+            {
+                From = mId,
+                To = To,
+                Seq = mSequenceNumber++,
+                Data = Data
+            }, Token);
+        }
+
+        // Call this only from within the Loop().
+        private void EnqueueSend(Packet OutgoingPacket, CancellationToken Token)
+        {
+            mMACProtocol.SendInBackground(
+                OutgoingPacket,
+                () => mEvents.Post(new FailedTransmission { OutgoingPacket = OutgoingPacket }),
+                Token
+            );
+        }
+
+        // Call this only from within the Loop().
+        private void ReplyACK(Packet IncomingPacket, CancellationToken Token)
+        {
+            var ACK = new Packet
+            {
+                From = IncomingPacket.To,
+                To = IncomingPacket.From,
+                Seq = IncomingPacket.Seq,
+                ACK = true,
+                Data = ""
+            };
+
+            mMACProtocol.SendInBackground(
+                ACK,
+                () => { },
+                Token
+            );
         }
 
         /*
@@ -76,17 +143,28 @@ namespace AdHocMAC.Nodes
             // For now, we can probably ignore this one.
         }
 
+        // Keep this as simple as possible, by only giving the packets to Loop().
         public void OnReceiveSuccess(Packet IncomingPacket)
         {
             if (DEBUG) Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
-            if (IncomingPacket.To == mId && mMACProtocol.OnReceive(IncomingPacket))
+            if (IncomingPacket.To == mId)
             {
-                mPackets.Post(IncomingPacket);
+                mEvents.Post(new PacketReceived { IncomingPacket = IncomingPacket });
             }
         }
 
         public void OnReceiveEnd() => mMACProtocol.OnChannelFree();
 
         public int GetID() => mId;
+
+        class PacketReceived
+        {
+            public Packet IncomingPacket;
+        }
+
+        class FailedTransmission
+        {
+            public Packet OutgoingPacket;
+        }
     }
 }
