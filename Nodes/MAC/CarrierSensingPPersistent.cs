@@ -31,15 +31,14 @@ namespace AdHocMAC.Nodes.MAC
 
             while (!Token.IsCancellationRequested)
             {
+                await WaitUntilNextSlot(Token);
                 if (IsChannelBusy())
                 {
                     if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {++attempt} to send");
-                    await WaitUntilNextSlot(Token);
                 }
                 else if (mRNG.Next(0, RNG_UPPER_BOUND) / (double)RNG_UPPER_BOUND >= mPPersistency)
                 {
                     if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] 1-P NonBusy NonSent Retrying");
-                    await WaitUntilNextSlot(Token);
                 }
                 else
                 {
