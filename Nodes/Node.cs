@@ -37,7 +37,6 @@ namespace AdHocMAC.Nodes
         /// </summary>
         public async Task Loop(CancellationToken Token)
         {
-            long loopIteration = 0;
             while (!Token.IsCancellationRequested)
             {
                 // Handle all incoming messages and timeouts here.
@@ -84,7 +83,6 @@ namespace AdHocMAC.Nodes
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello World from {mId}!", Token);
                 }
 
-                loopIteration += 1;
                 await Task.Delay(mRNG.Next(50, 100), Token).IgnoreExceptions(); // Add some randomness for timing.
             }
         }
