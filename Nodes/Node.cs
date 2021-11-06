@@ -17,14 +17,16 @@ namespace AdHocMAC.Nodes
         private const bool DEBUG = false;
 
         private readonly int mId;
+        private readonly int mNodeCount;
         private readonly IMACProtocol<Packet> mMACProtocol;
         private readonly Random mRNG;
 
         private readonly BufferBlock<Packet> mPackets = new BufferBlock<Packet>();
 
-        public Node(int Id, IMACProtocol<Packet> MACProtocol, Random RNG)
+        public Node(int Id, int NodeCount, IMACProtocol<Packet> MACProtocol, Random RNG)
         {
             mId = Id;
+            mNodeCount = NodeCount;
             mMACProtocol = MACProtocol;
             mRNG = RNG;
         }
@@ -40,8 +42,10 @@ namespace AdHocMAC.Nodes
 
                 while (mPackets.Count > 0)
                 {
-                    // To-Do: What do we want to do with "good" packets?
                     var packet = await mPackets.ReceiveAsync(Token);
+
+                    // To-Do: What do we want to do with "good" packets?
+                    Debug.WriteLine($"{mId}: PACKET FOR ME [{packet.From}: {packet.Data}]");
                 }
 
                 await Task.Delay(mRNG.Next(0, 3000), Token).IgnoreExceptions();
@@ -51,7 +55,7 @@ namespace AdHocMAC.Nodes
                 await mMACProtocol.Send(new Packet
                 {
                     From = mId,
-                    To = mId + 1,
+                    To = (mId + 1) % mNodeCount,
                     Data = $"Hello World from {mId}!"
                 }, Token);
 
@@ -62,10 +66,7 @@ namespace AdHocMAC.Nodes
         /*
          * From here on, the events should use CSMA/CA to handle what's happening.
          */
-        public void OnReceiveStart()
-        {
-            mMACProtocol.OnChannelBusy();
-        }
+        public void OnReceiveStart() => mMACProtocol.OnChannelBusy();
 
         public void OnReceiveCollide()
         {
@@ -84,10 +85,7 @@ namespace AdHocMAC.Nodes
             }
         }
 
-        public void OnReceiveEnd()
-        {
-            mMACProtocol.OnChannelFree();
-        }
+        public void OnReceiveEnd() => mMACProtocol.OnChannelFree();
 
         public int GetID() => mId;
     }

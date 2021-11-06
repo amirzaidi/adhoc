@@ -103,7 +103,7 @@ namespace AdHocMAC
                 );
                 */
                 var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), 100, 500);
-                var node = new Node(i, protocol, new Random(mSeedGenerator.Next()));
+                var node = new Node(i, mNodeCount, protocol, new Random(mSeedGenerator.Next()));
 
                 // We set this afterwards because we need a reference to node.
                 protocol.SendAction = async (p, ct) => await mNetwork.StartTransmission(node, p, Packet.GetLength(p), ct);
