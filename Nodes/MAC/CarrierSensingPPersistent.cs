@@ -29,23 +29,29 @@ namespace AdHocMAC.Nodes.MAC
             var time = DateTime.Now;
             int attempt = 0;
 
-            while (!Token.IsCancellationRequested)
+            if (!OutgoingPacket.ACK)
             {
                 await WaitUntilNextSlot(Token);
+            }
+
+            while (!Token.IsCancellationRequested)
+            {
                 if (IsChannelBusy())
                 {
                     if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] LineBusy at Attempt {++attempt} to send");
                 }
-                else if (mRNG.Next(0, RNG_UPPER_BOUND) / (double)RNG_UPPER_BOUND >= mPPersistency)
+                else if (!OutgoingPacket.ACK && mRNG.Next(0, RNG_UPPER_BOUND) / (double)RNG_UPPER_BOUND >= mPPersistency)
                 {
                     if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] 1-P NonBusy NonSent Retrying");
                 }
                 else
                 {
-                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] P NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] P (ACK: {OutgoingPacket.ACK}) NonBusy Sent After: {(int)(DateTime.Now - time).TotalMilliseconds} ms");
                     await SendAction(OutgoingPacket, Token);
                     break;
                 }
+
+                await WaitUntilNextSlot(Token);
             }
         }
 

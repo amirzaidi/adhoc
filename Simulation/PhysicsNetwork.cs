@@ -190,7 +190,7 @@ namespace AdHocMAC.Simulation
             {
                 var (prevTransmissions, newTransmissions) = ToNodeState.AddTransmission(FromNode.GetID(), Packet);
 
-                // If this is adding a new transmission.
+                // If this link was already active, ignore this call to AddTransmission.
                 if (!prevTransmissions.Contains(FromNode.GetID()))
                 {
                     if (newTransmissions.Count == 1)
@@ -211,17 +211,20 @@ namespace AdHocMAC.Simulation
             // Completed transmission.
             lock (ToNodeState) // Lock for thread-safety.
             {
-                var (prevTransmissions, newTransmissions) = ToNodeState.RemoveTransmission(FromNode.GetID(), Packet);
+                var (_, newTransmissions) = ToNodeState.RemoveTransmission(FromNode.GetID(), Packet);
+                var deliverPacket = !ToNodeState.HasCollided && PacketValid;
 
-                if (!ToNodeState.HasCollided && PacketValid)
-                {
-                    ToNode.OnReceiveSuccess(Packet);
-                }
-
+                // We can deliver some packets even when this is not the case, in back-to-back packets.
                 if (newTransmissions.Count == 0)
                 {
                     ToNode.OnReceiveEnd();
                     ToNodeState.HasCollided = false; // Reset this.
+                }
+
+                // Call OnReceiveSuccess after OnReceiveEnd, so that the channel might be already free.
+                if (deliverPacket)
+                {
+                    ToNode.OnReceiveSuccess(Packet);
                 }
             }
         }
