@@ -84,6 +84,11 @@ namespace AdHocMAC
                 {
                     await nodeThread;
                 }
+
+                foreach (var node in mNodes)
+                {
+                    node.GetLog().Clear();
+                }
             }
 
             mNodeThreads.Clear();
