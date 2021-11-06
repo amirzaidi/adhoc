@@ -91,7 +91,7 @@ namespace AdHocMAC.Nodes
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello World from {mId}!", Token);
                 }
 
-                await Task.Delay(mRNG.Next(50, 100), Token).IgnoreExceptions(); // Add some randomness for timing.
+                await Task.Delay(mRNG.Next(10, 20), Token).IgnoreExceptions(); // Add some randomness for timing.
             }
         }
 
