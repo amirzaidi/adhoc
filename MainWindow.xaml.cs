@@ -102,7 +102,9 @@ namespace AdHocMAC
                     mPPersistency
                 );
                 */
-                var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), 100, 500);
+
+                //var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), 100, 500);
+                var protocol = new CarrierSensingPPersistent(40.0, new Random(mSeedGenerator.Next()), 100, 500);
                 var node = new Node(i, mNodeCount, protocol, new Random(mSeedGenerator.Next()));
 
                 // We set this afterwards because we need a reference to node.
