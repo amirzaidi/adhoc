@@ -74,9 +74,16 @@ namespace AdHocMAC.Nodes
                     else if (ev is FailedTransmission evTimeout)
                     {
                         var packet = evTimeout.OutgoingPacket;
-                        packet.RetryAttempts += 1;
-                        EnqueueSend(packet, Token);
-                        if (DEBUG) Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                        if (packet.RetryAttempts >= 15)
+                        {
+                            if (DEBUG) Debug.WriteLine($"[S DROP] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                        }
+                        else
+                        {
+                            packet.RetryAttempts += 1;
+                            EnqueueSend(packet, Token);
+                            if (DEBUG) Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                        }
                     }
                 }
 
