@@ -5,8 +5,10 @@ using AdHocMAC.Nodes.Routing;
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -134,9 +136,24 @@ namespace AdHocMAC
             mLogHandler.OnDebug($"Started {mNodeThreads.Count} nodes");
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void Route_Click(object sender, RoutedEventArgs e)
         {
             Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), mRange);
+        }
+
+        private async void Log_Click(object sender, RoutedEventArgs e)
+        {
+            var lines = new List<string>
+            {
+                "Type, SenderID, ReceiverID, SeqNum, AttemptNumber, TimeInitialSend, TimeSentOrReceived"
+            };
+
+            foreach (var node in mNodes)
+            {
+                lines.AddRange(node.GetLog());
+            }
+
+            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString().Replace("\\", "-").Replace(":", "-")}.txt", lines);
         }
     }
 }

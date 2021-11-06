@@ -48,10 +48,10 @@ namespace AdHocMAC.Nodes.MAC
             {
                 var CT = CancellationTokenSource.CreateLinkedTokenSource(CTS.Token, Token).Token;
                 await Task.Delay(mTimeout, CT).IgnoreExceptions();
-                mRunningTimers.Remove(tuple); // Automatically remove the timer when done.
 
                 if (CT.IsCancellationRequested)
                 {
+                    mRunningTimers.Remove(tuple); // Automatically remove the timer when done.
                     mTimeout = MIN_TIMEOUT_MS;
                 }
                 else

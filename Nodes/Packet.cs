@@ -1,4 +1,6 @@
-﻿namespace AdHocMAC.Nodes
+﻿using System;
+
+namespace AdHocMAC.Nodes
 {
     struct Packet
     {
@@ -6,6 +8,10 @@
         public int From, To, Seq;
         public bool ACK;
         public string Data;
+
+        // Only for logging.
+        public long InitialUnixTimestamp;
+        public int RetryAttempts;
 
         public static int GetLength(Packet Packet)
         {

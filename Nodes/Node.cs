@@ -2,6 +2,7 @@
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,8 @@ namespace AdHocMAC.Nodes
     class Node : INode<Packet>
     {
         private const bool DEBUG = false;
+
+        private readonly List<string> mPacketLog = new List<string>();
 
         private readonly int mId;
         private readonly int mNodeCount;
@@ -52,6 +55,10 @@ namespace AdHocMAC.Nodes
                                 // To-Do: What do we want to do with unseen packets, other than send an ACK?
                                 ReplyACK(packet, Token);
                                 Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+
+                                var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
+                                log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
+                                mPacketLog.Add(log);
                                 break;
                             case PacketType.Old:
                                 // Send another ACK for these.
@@ -67,6 +74,7 @@ namespace AdHocMAC.Nodes
                     else if (ev is FailedTransmission evTimeout)
                     {
                         var packet = evTimeout.OutgoingPacket;
+                        packet.RetryAttempts += 1;
                         EnqueueSend(packet, Token);
                         Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
                     }
@@ -95,13 +103,18 @@ namespace AdHocMAC.Nodes
                 From = mId,
                 To = To,
                 Seq = mSequenceNumber++,
-                Data = Data
+                Data = Data,
+                InitialUnixTimestamp = Timestamp.UnixMS(),
             }, Token);
         }
 
         // Call this only from within the Loop().
         private void EnqueueSend(Packet OutgoingPacket, CancellationToken Token)
         {
+            var log = $"S, {OutgoingPacket.From}, {OutgoingPacket.To}, {OutgoingPacket.Seq}";
+            log += $", {OutgoingPacket.RetryAttempts}, {OutgoingPacket.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
+
+            mPacketLog.Add(log);
             mMACProtocol.SendInBackground(
                 OutgoingPacket,
                 () => mEvents.Post(new FailedTransmission { OutgoingPacket = OutgoingPacket }),
@@ -118,7 +131,7 @@ namespace AdHocMAC.Nodes
                 To = IncomingPacket.From,
                 Seq = IncomingPacket.Seq,
                 ACK = true,
-                Data = ""
+                Data = "",
             };
 
             mMACProtocol.SendInBackground(
@@ -154,6 +167,8 @@ namespace AdHocMAC.Nodes
         public void OnReceiveEnd() => mMACProtocol.OnChannelFree();
 
         public int GetID() => mId;
+
+        public List<string> GetLog() => mPacketLog;
 
         class PacketReceived
         {
