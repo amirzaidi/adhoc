@@ -6,14 +6,14 @@
         xmlns:local="clr-namespace:AdHocMAC"
         mc:Ignorable="d"
         ResizeMode="NoResize"
-        Title="Ad-Hoc Networks: MAC Simulation" Height="600" Width="800">
+        Title="Ad-Hoc Networks: MAC Simulation" Height="720" Width="1280">
     <Grid Name="Grid">
         <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,10,10" Height="30" Width="70" Content="Start" Click="StartButton_Click" />
-        <Slider Name="NodeCount" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,10" Width="680" Height="30" Value="2" Maximum="50"
+        <Slider Name="NodeCount" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10,0,0,10" Width="1155" Height="30" Value="2" Maximum="50"
     AutoToolTipPlacement="BottomRight" TickPlacement="Both" TickFrequency="1" 
 IsSnapToTickEnabled="True" />
-        <Button Content="Start Route" HorizontalAlignment="Left" Margin="704,469,0,0" VerticalAlignment="Top" Height="37" Width="70" Click="Route_Click"/>
-        <Button Content="Log" HorizontalAlignment="Left" Margin="704,399,0,0" VerticalAlignment="Top" Height="37" Width="70" Click="Log_Click"/>
+        <Button Content="Start Route" HorizontalAlignment="Right" Margin="0,0,10,45" VerticalAlignment="Bottom" Height="37" Width="70" Click="Route_Click"/>
+        <Button Content="Log" HorizontalAlignment="Right" Margin="0,0,10,87" VerticalAlignment="Bottom" Height="37" Width="70" Click="Log_Click"/>
 
     </Grid>
 </Window>

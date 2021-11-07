@@ -16,11 +16,11 @@ namespace AdHocMAC.GUI
     /// </summary>
     class NodeVisualizer<T>
     {
-        private const int GRID_MARGIN = 20;
+        private const int GRID_MARGIN = 15;
         private const int GRID_PANEL_SIZE = 70;
         private const double GRID_PANEL_CENTER_X = GRID_PANEL_SIZE / 2.0;
         private const double GRID_PANEL_CENTER_Y = 15.0;
-        private const int ROW_PANEL_COUNT = 10;
+        private const int ROW_PANEL_COUNT = 16;
         private const double NODE_CIRCLE_DIAMETER = 30.0;
         private const double BLOB_CIRCLE_DIAMETER = NODE_CIRCLE_DIAMETER / 3.0;
 
