@@ -127,7 +127,11 @@ namespace AdHocMAC
 
         private void Route_Click(object sender, RoutedEventArgs e)
         {
-            Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), Configuration.PHYSICS_RANGE);
+            // Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), Configuration.PHYSICS_RANGE);
+            if (mNodes.Count > 0)
+            {
+                mNodes[0].StartRouteRequest(mNodes.Count - 1);
+            }
         }
 
         private async void Log_Click(object sender, RoutedEventArgs e)

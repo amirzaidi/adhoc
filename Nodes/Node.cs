@@ -141,6 +141,10 @@ namespace AdHocMAC.Nodes
                     if (DEBUG) Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
                 }
             }
+            else if (Event is GUIEvent evGUI)
+            {
+                await evGUI.Action(Token);
+            }
             else if (Event is WakeupEvent)
             {
                 // Nothing happened for a while, so lets execute the start of an algorithm.
@@ -154,6 +158,7 @@ namespace AdHocMAC.Nodes
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
                     */
 
+                    /*
                     // Send a routed packet from id 0 to id (nodecount - 1).
                     if (mId == 0 && mRouter.UndeliveredMessages() == 0 && ++mEmptyWakeups == 16) // Wait 16 slots.
                     {
@@ -161,6 +166,7 @@ namespace AdHocMAC.Nodes
                         if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
                         mRouter.FindRouteThenSend(mNodeCount - 1, $"Hello Node Far Away!", Token);
                     }
+                    */
 
                     /*
                     // Send a broadcast.
@@ -240,6 +246,18 @@ namespace AdHocMAC.Nodes
             );
         }
 
+        public void StartRouteRequest(int ToNode)
+        {
+            mEvents.Post(new GUIEvent
+            {
+                Action = async Token =>
+                {
+                    if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
+                    mRouter.FindRouteThenSend(ToNode, $"Hello Node Far Away!", Token);
+                }
+            });
+        }
+
         /*
          * From here on, the events should use CSMA/CA to handle what's happening.
          */
@@ -269,23 +287,28 @@ namespace AdHocMAC.Nodes
 
         public List<string> GetLog() => mPacketLog;
 
-        class PacketReceived
+        private class PacketReceived
         {
             public Packet IncomingPacket;
         }
 
-        class RoutedPacketReceived
+        private class RoutedPacketReceived
         {
             public int From;
             public string Data;
         }
 
-        class FailedTransmission
+        private class FailedTransmission
         {
             public Packet OutgoingPacket;
         }
 
-        class WakeupEvent
+        private class GUIEvent
+        {
+            public Func<CancellationToken, Task> Action;
+        }
+
+        private class WakeupEvent
         {
         }
     }
