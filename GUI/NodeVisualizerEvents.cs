@@ -11,12 +11,13 @@ namespace AdHocMAC.GUI
             mVisualizer = Visualizer;
         }
 
-        public void BeginReceive(T Receiver, T Sender)
+        public void BeginReceive(T Receiver, T Sender, (byte, byte, byte) RGB)
         {
+            var (r, g, b) = RGB;
             mVisualizer.RunOnUIThread(() =>
             {
                 //mVisualizer.ChangeLineColor(Sender, Receiver, 127, 255, 0);
-                mVisualizer.ChangeBlobColor(Receiver, Sender, 127, 255, 0);
+                mVisualizer.ChangeBlobColor(Receiver, Sender, r, g, b);
             });
         }
 
@@ -29,11 +30,12 @@ namespace AdHocMAC.GUI
             });
         }
 
-        public void BeginSend(T Sender)
+        public void BeginSend(T Sender, (byte, byte, byte) RGB)
         {
+            var (r, g, b) = RGB;
             mVisualizer.RunOnUIThread(() =>
             {
-                mVisualizer.ChangeNodeColor(Sender, 0, 127, 255);
+                mVisualizer.ChangeNodeColor(Sender, r, g, b);
                 mVisualizer.ChangeNodeText(Sender, "Sending");
             });
         }

@@ -30,6 +30,7 @@ namespace AdHocMAC.Nodes
 
         private readonly BufferBlock<object> mEvents = new BufferBlock<object>();
         private int mSequenceNumber;
+        private int mEmptyWakeups = 0;
 
         public Node(int Id, int NodeCount, IMACProtocol<Packet> MACProtocol, Random RNG)
         {
@@ -96,8 +97,8 @@ namespace AdHocMAC.Nodes
                 {
                     case PacketType.NewPacket:
                         // To-Do: What do we want to do with unseen packets, other than send an ACK?
-                        EnqueueReplyACK(packet, Token);
                         if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                        EnqueueReplyACK(packet, Token);
 
                         var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
                         log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
@@ -107,8 +108,8 @@ namespace AdHocMAC.Nodes
                         break;
                     case PacketType.DuplicatePacket:
                         // Send another ACK for these.
-                        EnqueueReplyACK(packet, Token);
                         if (DEBUG) Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                        EnqueueReplyACK(packet, Token);
                         break;
                     case PacketType.Broadcast:
                         if (DEBUG) Debug.WriteLine($"[B NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
@@ -146,43 +147,25 @@ namespace AdHocMAC.Nodes
                 // Basic logic: whenever there is no message in the queue, we send a new one.
                 if (mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < mMsgGenerationProb)
                 {
+                    /*
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.
                     if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
+                    */
+
+                    // Send a routed packet from id 0 to id (nodecount - 1).
+                    if (mId == 0 && mRouter.UndeliveredMessages() == 0 && ++mEmptyWakeups == 16) // Wait 16 slots.
+                    {
+                        mEmptyWakeups = 0;
+                        if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
+                        mRouter.FindRouteThenSend(mNodeCount - 1, $"Hello Node Far Away!", Token);
+                    }
 
                     /*
-                    if (true)
-                    {
-                        if (mId == 0 && mRouter.UndeliveredMessages() == 0)
-                        {
-                            if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
-                            mRouter.FindRouteThenSend(mNodeCount - 1, $"Hello Node Far Away!", Token);
-                        }
-                    }
-                    else
-                    {
-                        var randomDouble = mRNG.NextDouble();
-                        if (randomDouble < 0.1)
-                        {
-                            // Send a routed packet 10% of the time.
-                            if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: CREATING ROUTE");
-                            mRouter.FindRouteThenSend((mId + mNodeCount - 1) % mNodeCount, $"Hello Node Far Away!", Token);
-                        }
-                        else if (randomDouble < 0.2)
-                        {
-                            // Send a broadcast 10% of the time.
-                            if (DEBUG) Debug.WriteLine($"[B NEW] {mId}: Sequence {mSequenceNumber}");
-                            EnqueueBroadcast($"Hello Everyone from {mId}!", Token);
-                        }
-                        else
-                        {
-                            // Send a Hello World packet to the node with ID+1.
-                            // The basic node code does not bother with how sending is handled.
-                            if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
-                            EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
-                        }
-                    }
+                    // Send a broadcast.
+                    if (DEBUG) Debug.WriteLine($"[B NEW] {mId}: Sequence {mSequenceNumber}");
+                    EnqueueBroadcast($"Hello Everyone from {mId}!", Token);
                     */
                 }
             }
@@ -191,6 +174,7 @@ namespace AdHocMAC.Nodes
         // Call this only from within the Loop().
         private void EnqueueSend(int To, object Data, CancellationToken Token)
         {
+            if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: [{To}]");
             EnqueueSend(new Packet
             {
                 From = mId,
@@ -198,6 +182,7 @@ namespace AdHocMAC.Nodes
                 Seq = mSequenceNumber++,
                 Data = Data,
                 InitialUnixTimestamp = Timestamp.UnixMS(),
+                RGB = (0, 127, 255),
             }, Token);
         }
 
@@ -225,6 +210,7 @@ namespace AdHocMAC.Nodes
                 Seq = mSequenceNumber++,
                 Data = Data,
                 InitialUnixTimestamp = Timestamp.UnixMS(),
+                RGB = (255, 127, 0),
             };
 
             mMACProtocol.SendInBackground(
@@ -244,6 +230,7 @@ namespace AdHocMAC.Nodes
                 Seq = IncomingPacket.Seq,
                 ACK = true,
                 Data = "",
+                RGB = (0, 255, 0),
             };
 
             mMACProtocol.SendInBackground(

@@ -49,15 +49,23 @@ namespace AdHocMAC.Nodes.MAC
         }
 
         // Used to time sending back ACKs.
-        public async Task WaitPacketTimer(int To, int Seq, Action OnTimeout, CancellationToken Token)
+        public async Task WaitPacketTimer(int To, int Seq, Action OnTimeout, Func<bool> IsChannelBusy, CancellationToken Token)
         {
             var tuple = (To, Seq);
             if (mRunningTimers.TryGetValue(tuple, out var CTS))
             {
                 var CT = CancellationTokenSource.CreateLinkedTokenSource(CTS.Token, Token).Token;
+                await Task.Delay((int)Math.Ceiling(Configuration.SIFS_SECONDS * 1000.0), CT).IgnoreExceptions();
 
-                var slots = 1 + mRNG.Next(0, mBackoff.UpperBoundExcl()); // Add 1 timeslot to account for propagation delays.
-                await SyncedSlots.WaitUntilSlot(slots, CT);
+                var slots = mRNG.Next(0, mBackoff.UpperBoundExcl()); // Add 1 timeslot to account for propagation delays.
+                while (slots > 0 && !CT.IsCancellationRequested)
+                {
+                    await SyncedSlots.WaitUntilSlot(0, CT);
+                    if (!IsChannelBusy())
+                    {
+                        slots -= 1;
+                    }
+                }
 
                 var prevTimeout = mBackoff.UpperBoundExcl();
                 if (CT.IsCancellationRequested)

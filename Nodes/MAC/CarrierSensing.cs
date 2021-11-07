@@ -45,7 +45,7 @@ namespace AdHocMAC.Nodes.MAC
                 if (useCA) // Regular packet.
                 {
                     await SendWhenChannelFree(OutgoingPacket, Token);
-                    _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, Token));
+                    _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, () => mIsChannelBusy, Token));
                 }
                 else if (IsChannelBusy()) // Broadcast/ACK but channel is occupied.
                 {
@@ -75,7 +75,6 @@ namespace AdHocMAC.Nodes.MAC
         {
             if (IncomingPacket.To == Packet.BROADCAST_TO_ID)
             {
-                // Do not handle broadcasts.
                 return PacketType.Broadcast;
             }
 

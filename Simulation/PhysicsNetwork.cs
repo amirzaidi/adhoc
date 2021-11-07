@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace AdHocMAC.Simulation
 {
-    class PhysicsNetwork<T> : INetwork<T>
+    class PhysicsNetwork<T> : INetwork<T> where T : IPacket
     {
         private const bool DEBUG = false;
 
@@ -45,7 +45,7 @@ namespace AdHocMAC.Simulation
             stopwatch.Start();
 
             // We increase the transmission count to ensure no data can be received.
-            mLogger.BeginSend(FromNode);
+            mLogger.BeginSend(FromNode, Packet.GetRGB());
             AddTransmission(FromNode, FromNode, fromNodeState, Packet);
 
             foreach (var KVP in mNodes)
@@ -108,7 +108,7 @@ namespace AdHocMAC.Simulation
                                 state = TransmissionState.Ongoing;
 
                                 if (DEBUG) Debug.WriteLine($"{debugPrint}: NotArrived > Ongoing");
-                                mLogger.BeginReceive(ToNode, FromNode); // BeginReceive when we enter Ongoing.
+                                mLogger.BeginReceive(ToNode, FromNode, Packet.GetRGB()); // BeginReceive when we enter Ongoing.
                             }
                             else
                             {
@@ -150,7 +150,7 @@ namespace AdHocMAC.Simulation
                             AddTransmission(FromNode, ToNode, ToNodeState, Packet);
 
                             if (DEBUG) Debug.WriteLine($"{debugPrint}: Interrupted > Ongoing");
-                            mLogger.BeginReceive(ToNode, FromNode); // BeginReceive when we enter Ongoing.
+                            mLogger.BeginReceive(ToNode, FromNode, Packet.GetRGB()); // BeginReceive when we enter Ongoing.
 
                             break;
                         }

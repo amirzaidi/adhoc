@@ -18,10 +18,10 @@ namespace AdHocMAC
         public const MACProtocol MAC = MACProtocol.CSMAPP;
         public const int MinSlotDelayUpperbound = 4;
         public const int MaxSlotDelayUpperbound = 32;
-        public const double PPersistency = 0.4;
+        public const double PPersistency = 1.0;
 
         public const double SLOT_SECONDS = 0.1;
-        // public const double SIFS_SECONDS = 0.05;
+        public const double SIFS_SECONDS = 0.3;
 
         public enum CABackoff
         {
@@ -32,7 +32,7 @@ namespace AdHocMAC
 
         public const CABackoff CA_BACKOFF = CABackoff.Fib;
         public const int CA_MIN_TIMEOUT_SLOTS = 1;
-        public const int CA_MAX_TIMEOUT_SLOTS = 32;
+        public const int CA_MAX_TIMEOUT_SLOTS = 256;
 
         public enum MessageChance
         {
