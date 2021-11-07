@@ -160,7 +160,7 @@ namespace AdHocMAC
         {
             var lines = new List<string>
             {
-                "Type, SenderID, ReceiverID, SeqNum, AttemptNumber, TimeInitialSend, TimeSentOrReceived"
+                "Traffic_Type, Traffic_parameter, Poisson_parameter, Type, SenderID, ReceiverID, SeqNum, AttemptNumber, TimeInitialSend, TimeSentOrReceived"
             };
 
             foreach (var node in mNodes)
