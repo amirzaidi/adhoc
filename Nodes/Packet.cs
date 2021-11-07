@@ -22,8 +22,17 @@
             {
                 byteCount += dataStr.Length;
             }
+            else if (Packet.Data is IByteLength ib)
+            {
+                byteCount += ib.GetLength();
+            }
 
             return byteCount;
+        }
+
+        public interface IByteLength
+        {
+            public int GetLength();
         }
     }
 }

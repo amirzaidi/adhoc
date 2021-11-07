@@ -1,4 +1,5 @@
 ﻿using AdHocMAC.Nodes.MAC;
+using AdHocMAC.Nodes.Routing;
 using AdHocMAC.Simulation;
 using AdHocMAC.Utility;
 using System;
@@ -15,7 +16,7 @@ namespace AdHocMAC.Nodes
     /// </summary>
     class Node : INode<Packet>
     {
-        private const bool DEBUG = true;
+        private const bool DEBUG = false;
 
         private readonly List<string> mPacketLog = new List<string>();
 
@@ -24,6 +25,7 @@ namespace AdHocMAC.Nodes
         private readonly IMACProtocol<Packet> mMACProtocol;
         private readonly Random mRNG;
 
+        private readonly Router mRouter;
         private readonly double mMsgGenerationProb;
 
         private readonly BufferBlock<object> mEvents = new BufferBlock<object>();
@@ -35,6 +37,12 @@ namespace AdHocMAC.Nodes
             mNodeCount = NodeCount;
             mMACProtocol = MACProtocol;
             mRNG = RNG;
+
+            mRouter = new Router(Id, EnqueueSend, EnqueueBroadcast, (From, Data) => mEvents.Post(new RoutedPacketReceived
+            {
+                From = From,
+                Data = Data,
+            }));
 
             mMsgGenerationProb = Configuration.CreateMessageChance(RNG.NextDouble());
         }
@@ -94,6 +102,8 @@ namespace AdHocMAC.Nodes
                         var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
                         log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
                         mPacketLog.Add(log);
+
+                        mRouter.TryHandlePacket(packet.Data, Token);
                         break;
                     case PacketType.DuplicatePacket:
                         // Send another ACK for these.
@@ -102,12 +112,18 @@ namespace AdHocMAC.Nodes
                         break;
                     case PacketType.Broadcast:
                         if (DEBUG) Debug.WriteLine($"[B NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                        mRouter.TryHandlePacket(packet.Data, Token);
                         break;
                     case PacketType.ACK:
                         // Successful packet.
                         if (DEBUG) Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
                         break;
                 }
+            }
+            else if (Event is RoutedPacketReceived evRoutedPacket)
+            {
+                // What do we want to do with successfully routed packets?
+                Debug.WriteLine($"[ROUTE END] {mId}: [{evRoutedPacket.From}: {evRoutedPacket.Data}]");
             }
             else if (Event is FailedTransmission evTimeout)
             {
@@ -133,16 +149,41 @@ namespace AdHocMAC.Nodes
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.
                     if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
+                    EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
 
-                    if (mRNG.NextDouble() < 0.1)
+                    /*
+                    if (true)
                     {
-                        // Send a broadcast 10% of the time instead of a regular packet.
-                        EnqueueBroadcast($"Hello Everyone from {mId}!", Token);
+                        if (mId == 0 && mRouter.UndeliveredMessages() == 0)
+                        {
+                            if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
+                            mRouter.FindRouteThenSend(mNodeCount - 1, $"Hello Node Far Away!", Token);
+                        }
                     }
                     else
                     {
-                        EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
+                        var randomDouble = mRNG.NextDouble();
+                        if (randomDouble < 0.1)
+                        {
+                            // Send a routed packet 10% of the time.
+                            if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: CREATING ROUTE");
+                            mRouter.FindRouteThenSend((mId + mNodeCount - 1) % mNodeCount, $"Hello Node Far Away!", Token);
+                        }
+                        else if (randomDouble < 0.2)
+                        {
+                            // Send a broadcast 10% of the time.
+                            if (DEBUG) Debug.WriteLine($"[B NEW] {mId}: Sequence {mSequenceNumber}");
+                            EnqueueBroadcast($"Hello Everyone from {mId}!", Token);
+                        }
+                        else
+                        {
+                            // Send a Hello World packet to the node with ID+1.
+                            // The basic node code does not bother with how sending is handled.
+                            if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
+                            EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
+                        }
                     }
+                    */
                 }
             }
         }
@@ -244,6 +285,12 @@ namespace AdHocMAC.Nodes
         class PacketReceived
         {
             public Packet IncomingPacket;
+        }
+
+        class RoutedPacketReceived
+        {
+            public int From;
+            public string Data;
         }
 
         class FailedTransmission

@@ -20,7 +20,7 @@ namespace AdHocMAC
         public const int MaxSlotDelayUpperbound = 32;
         public const double PPersistency = 0.4;
 
-        public const double SLOT_SECONDS = 20 * 0.1;
+        public const double SLOT_SECONDS = 0.1;
         // public const double SIFS_SECONDS = 0.05;
 
         public enum CABackoff
