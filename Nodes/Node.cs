@@ -36,9 +36,7 @@ namespace AdHocMAC.Nodes
             mMACProtocol = MACProtocol;
             mRNG = RNG;
 
-            mMsgGenerationProb = Configuration.POISSON_DIST.GetXForCumulativeProb(RNG.NextDouble()) / Configuration.POISSON_DIST_DIV;
-            // mMsgGenerationProb = Configuration.NODE_CHANCE_GEN_MSG;
-            // mMsgGenerationProb = Configuration.NODE_CHANCE_GEN_MSG * RNG.NextDouble();
+            mMsgGenerationProb = Configuration.CreateMessageChance(RNG.NextDouble());
         }
 
         /// <summary>

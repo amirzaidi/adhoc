@@ -27,18 +27,40 @@ namespace AdHocMAC
         {
             BEB,
             DIDD,
-            Fib
+            Fib,
         }
 
         public const CABackoff CA_BACKOFF = CABackoff.Fib;
         public const int CA_MIN_TIMEOUT_SLOTS = 1;
         public const int CA_MAX_TIMEOUT_SLOTS = 32;
 
+        public enum MessageChance
+        {
+            Uniform,
+            ScaledUniform,
+            Poisson,
+        }
+
+        public const MessageChance MESSAGE_CHANCE_TYPE = MessageChance.Poisson;
+
         public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(2.0);
         public const double POISSON_DIST_DIV = 200.0;
 
         public const int NODE_WAKEUP_TIME_MS = (int)(0.5 * SLOT_SECONDS * 1000); // Half a slot.
         public const double NODE_CHANCE_GEN_MSG = 0.005;
+
+        public static double CreateMessageChance(double RandDouble)
+        {
+            switch (MESSAGE_CHANCE_TYPE)
+            {
+                case MessageChance.Uniform:
+                    return NODE_CHANCE_GEN_MSG;
+                case MessageChance.ScaledUniform:
+                    return NODE_CHANCE_GEN_MSG * RandDouble;
+                case MessageChance.Poisson:
+                    return POISSON_DIST.GetXForCumulativeProb(RandDouble) / POISSON_DIST_DIV;
+            }
+        }
 
         public const double PHYSICS_RANGE = 200.0;
         public const double TRANSMISSION_CHAR_PER_SECOND = 256.0; // Characters sent per second.
