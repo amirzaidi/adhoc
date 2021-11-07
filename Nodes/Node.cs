@@ -62,9 +62,15 @@ namespace AdHocMAC.Nodes
                     });
                 }
 
-                var ev = await mEvents.ReceiveAsync(Token);
-                wakeupCTS?.Cancel(); // Cancel the wakeup event.
-                await OnEvent(ev, Token);
+                try
+                {
+                    var ev = await mEvents.ReceiveAsync(Token);
+                    wakeupCTS?.Cancel(); // Cancel the wakeup event.
+                    await OnEvent(ev, Token);
+                }
+                catch (TaskCanceledException)
+                {
+                }
             }
         }
 
