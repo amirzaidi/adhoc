@@ -63,14 +63,17 @@ namespace AdHocMAC
             mNetwork = new PhysicsNetwork<Packet>(nodeVisualizerEvents, Configuration.PHYSICS_RANGE);
             mReset = new DuplicateRunDiscarder(Reset);
 
-            NodeCount.Value = Configuration.NODE_COUNT;
+            NodeCount.Value = Configuration.AUTO_RUN_NODE_COUNT;
 
             if (Configuration.AUTO_RUN_SHUT_DOWN_AFTER != -1)
             {
                 SynchronizationContext.Current.Post(async _ =>
                 {
                     await mReset.Execute();
-                    mNodes[0].StartRouteRequest(mNodes.Count - 1);
+                    if (!Configuration.AUTO_RUN_PACKETS_ENABLED)
+                    {
+                        mNodes[0].StartRouteRequest(mNodes.Count - 1);
+                    }
                     await Task.Delay(Configuration.AUTO_RUN_SHUT_DOWN_AFTER);
                     await SaveLogs();
                     Application.Current.Shutdown();

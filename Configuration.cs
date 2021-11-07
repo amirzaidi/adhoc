@@ -9,9 +9,9 @@ namespace AdHocMAC
     class Configuration
     {
         public static int AUTO_RUN_SHUT_DOWN_AFTER = -1;
-        public static int NODE_COUNT = 2;
-
-        public const bool LAYOUT_SAME_NODE_POSITION = false;
+        public static bool AUTO_RUN_PACKETS_ENABLED = false;
+        public static int AUTO_RUN_NODE_COUNT = 2;
+        public static bool AUTO_RUN_FULLY_CONNECTED = false;
 
         public enum MACProtocol
         {

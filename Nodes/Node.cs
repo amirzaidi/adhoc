@@ -160,14 +160,26 @@ namespace AdHocMAC.Nodes
 
                 // Nothing happened for a while, so lets execute the start of an algorithm.
                 // Basic logic: whenever there is no message in the queue, we send a new one.
-                if (mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < mMsgGenerationProb)
+                if (Configuration.AUTO_RUN_PACKETS_ENABLED && mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < mMsgGenerationProb)
                 {
-                    /*
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.
+                    int toNode;
+                    if (Configuration.AUTO_RUN_FULLY_CONNECTED)
+                    {
+                        toNode = mRNG.Next(0, mNodeCount - 1);
+                        if (toNode >= mId)
+                        {
+                            toNode += 1;
+                        }
+                    }
+                    else
+                    {
+                        toNode = mRNG.Next(0, 2) == 0 ? ((mId + mNodeCount - 1) % mNodeCount) : ((mId + 1) % mNodeCount);
+                    }
+
                     if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
-                    EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
-                    */
+                    EnqueueSend(toNode, $"Hello Node from {mId}!", Token);
 
                     /*
                     // Send a broadcast.

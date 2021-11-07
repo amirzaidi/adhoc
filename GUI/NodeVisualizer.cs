@@ -142,8 +142,8 @@ namespace AdHocMAC.GUI
                 int elementId = mGetNodeID(node);
                 var transform = new TranslateTransform
                 {
-                    X = Configuration.LAYOUT_SAME_NODE_POSITION ? GRID_MARGIN : (GRID_MARGIN + GRID_PANEL_SIZE * (elementId % ROW_PANEL_COUNT)),
-                    Y = Configuration.LAYOUT_SAME_NODE_POSITION ? GRID_MARGIN : (GRID_MARGIN + GRID_PANEL_SIZE * (elementId / ROW_PANEL_COUNT)),
+                    X = Configuration.AUTO_RUN_FULLY_CONNECTED ? GRID_MARGIN : (GRID_MARGIN + GRID_PANEL_SIZE * (elementId % ROW_PANEL_COUNT)),
+                    Y = Configuration.AUTO_RUN_FULLY_CONNECTED ? GRID_MARGIN : (GRID_MARGIN + GRID_PANEL_SIZE * (elementId / ROW_PANEL_COUNT)),
                 };
                 panel.RenderTransform = transform;
                 var c = UIElementCreator.CreateCircle(
