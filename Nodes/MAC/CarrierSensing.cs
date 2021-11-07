@@ -10,13 +10,27 @@ namespace AdHocMAC.Nodes.MAC
     /// </summary>
     abstract class CarrierSensing : IMACProtocol<Packet>
     {
-        public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => Debug.WriteLine("[CSMA] Simulated Send");
+        private const bool DEBUG = false;
+
+        protected Func<Packet, CancellationToken, Task> mSendAction = async (p, ct) => Debug.WriteLine("[CSMA] Simulated Send");
 
         // We always have CA enabled to make it easier to implement.
-        private readonly CollisionAvoidance mCA = new CollisionAvoidance();
+        protected readonly Random mRNG;
+        private readonly CollisionAvoidance mCA;
 
         private Task mSend = Task.CompletedTask;
         private bool mIsChannelBusy;
+
+        public CarrierSensing(Random RNG)
+        {
+            mRNG = RNG;
+            mCA = new CollisionAvoidance(new Random(RNG.Next()));
+        }
+
+        public void SetSendAction(Func<Packet, CancellationToken, Task> SendAction)
+        {
+            mSendAction = SendAction;
+        }
 
         public void SendInBackground(Packet OutgoingPacket, Action OnTimeout, CancellationToken Token)
         {
@@ -27,11 +41,19 @@ namespace AdHocMAC.Nodes.MAC
 
             mSend = mSend.ContinueWith(async _ =>
             {
-                await SendWhenChannelFree(OutgoingPacket, Token);
-
-                if (!OutgoingPacket.ACK)
+                if (!OutgoingPacket.ACK) // Regular packet.
                 {
+                    await SendWhenChannelFree(OutgoingPacket, Token);
                     _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, Token));
+                }
+                else if (IsChannelBusy()) // ACK but channel is occupied.
+                {
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] ACK Cannot Be Sent");
+                }
+                else // ACK and channel is free.
+                {
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] ACK Sent");
+                    await mSendAction(OutgoingPacket, Token);
                 }
             });
         }
@@ -39,6 +61,11 @@ namespace AdHocMAC.Nodes.MAC
         public int BacklogCount()
         {
             return mCA.BacklogCount();
+        }
+
+        public void RemoveFromBacklog(int To, int Seq)
+        {
+            mCA.CancelPacketTimer(To, Seq);
         }
 
         protected abstract Task SendWhenChannelFree(Packet OutgoingPacket, CancellationToken Token);

@@ -43,9 +43,6 @@ namespace AdHocMAC
         // Determined by UI slider.
         private int mNodeCount;
 
-        private int mMinDelay = 100;
-        private int mMaxDelay = 500;
-        private double mPPersistency = 0.4;
         private double mRange = 200.0;
 
         public MainWindow()
@@ -103,23 +100,11 @@ namespace AdHocMAC
             mCTS = new CancellationTokenSource();
             for (int i = 0; i < mNodeCount; i++)
             {
-                /*
-                // To-Do: Make the outgoing packet function use the SimulatedNetwork instead of only logging.
-                var protocol = new CarrierSensingPPersistent
-                (
-                    // This should become a lambda that directly transmits on the network (rather than logging).
-                    Packet => mLogHandler.OnDebug(i, $"Sending: {Packet.Data} to {Packet.To}"),
-                    mPPersistency
-                );
-                */
-
-                //var protocol = new Aloha();
-                //var protocol = new CarrierSensingNonPersistent(new Random(mSeedGenerator.Next()), mMinDelay, mMaxDelay);
-                var protocol = new CarrierSensingPPersistent(new Random(mSeedGenerator.Next()), mPPersistency);
+                var protocol = Configuration.CreateMACProtocol(mSeedGenerator.Next());
                 var node = new Node(i, mNodeCount, protocol, new Random(mSeedGenerator.Next()));
 
                 // We set this afterwards because we need a reference to node.
-                protocol.SendAction = async (p, ct) => await mNetwork.StartTransmission(node, p, Packet.GetLength(p), ct);
+                protocol.SetSendAction(async (p, ct) => await mNetwork.StartTransmission(node, p, Packet.GetLength(p), ct));
 
                 // Add newly created node.
                 nodes.Add(node);

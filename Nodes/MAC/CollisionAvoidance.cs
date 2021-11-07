@@ -1,4 +1,5 @@
-﻿using AdHocMAC.Utility;
+﻿using AdHocMAC.Nodes.MAC.Backoff;
+using AdHocMAC.Utility;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,14 +16,19 @@ namespace AdHocMAC.Nodes.MAC
     {
         private const bool DEBUG = false;
 
-        private const int MIN_TIMEOUT_MS = 1000;
-        private const int MAX_TIMEOUT_MS = 8 * MIN_TIMEOUT_MS;
-
         // To-Do: Fix the inefficiency of doing list iteration on every packet.
         private readonly List<(int, int)> mReceivedPacketIds = new List<(int, int)>();
         private readonly Dictionary<(int, int), CancellationTokenSource> mRunningTimers = new Dictionary<(int, int), CancellationTokenSource>();
+        private readonly Random mRNG;
 
-        private int mTimeout = MIN_TIMEOUT_MS;
+        private readonly SemaphoreSlim mSemaphore = new SemaphoreSlim(1);
+        private readonly IBackoff mBackoff;
+
+        public CollisionAvoidance(Random RNG)
+        {
+            mRNG = RNG;
+            mBackoff = Configuration.CreateBackoff();
+        }
 
         // Used to prevent reprocessing duplicate packets.
         public bool TryAddUniquePacketId(int FromNodeId, int Seq)
@@ -49,28 +55,27 @@ namespace AdHocMAC.Nodes.MAC
             if (mRunningTimers.TryGetValue(tuple, out var CTS))
             {
                 var CT = CancellationTokenSource.CreateLinkedTokenSource(CTS.Token, Token).Token;
-                await Task.Delay(mTimeout, CT).IgnoreExceptions();
 
+                var slots = 1 + mRNG.Next(0, mBackoff.UpperBoundExcl()); // Add 1 timeslot to account for propagation delays.
+                await SyncedSlots.WaitUntilSlot(slots, CT);
+
+                var prevTimeout = mBackoff.UpperBoundExcl();
                 if (CT.IsCancellationRequested)
                 {
-                    // To-Do: Find out better BEB algorithm without lock.
-                    lock (this)
-                    {
-                        mTimeout = MIN_TIMEOUT_MS;
-                    }
+                    await mSemaphore.WaitAsync();
+                    mBackoff.Decrease();
+                    mSemaphore.Release();
                 }
                 else
                 {
-                    lock (this)
-                    {
-                        if (mTimeout < MAX_TIMEOUT_MS)
-                        {
-                            mTimeout *= 2;
-                        }
-                    }
+                    await mSemaphore.WaitAsync();
+                    mBackoff.Increase();
+                    mSemaphore.Release();
 
                     OnTimeout();
                 }
+                var newTimeout = mBackoff.UpperBoundExcl();
+                if (DEBUG) Debug.WriteLine($"BACKOFF TIME CHANGE [{prevTimeout} -> {newTimeout}]");
             }
         }
 

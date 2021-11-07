@@ -107,6 +107,7 @@ namespace AdHocMAC.Nodes
                 var packet = evTimeout.OutgoingPacket;
                 if (packet.RetryAttempts >= 15)
                 {
+                    mMACProtocol.RemoveFromBacklog(packet.To, packet.Seq);
                     if (DEBUG) Debug.WriteLine($"[S DROP] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
                 }
                 else
@@ -192,7 +193,7 @@ namespace AdHocMAC.Nodes
         // Keep this as simple as possible, by only giving the packets to Loop().
         public void OnReceiveSuccess(Packet IncomingPacket)
         {
-            if (DEBUG) Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
+            // if (DEBUG) Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
             if (IncomingPacket.To == mId)
             {
                 mEvents.Post(new PacketReceived { IncomingPacket = IncomingPacket });

@@ -6,17 +6,22 @@ namespace AdHocMAC.Nodes.MAC
 {
     class Aloha : IMACProtocol<Packet>
     {
-        public Func<Packet, CancellationToken, Task> SendAction = async (p, ct) => { };
+        private Func<Packet, CancellationToken, Task> mSendAction = async (p, ct) => { };
 
         private Task mSend = Task.CompletedTask;
         private int mBacklog;
+
+        public void SetSendAction(Func<Packet, CancellationToken, Task> SendAction)
+        {
+            mSendAction = SendAction;
+        }
 
         public void SendInBackground(Packet OutgoingPacket, Action OnTimeout, CancellationToken Token)
         {
             Interlocked.Increment(ref mBacklog);
             mSend = mSend.ContinueWith(async _ =>
             {
-                await SendAction(OutgoingPacket, Token);
+                await mSendAction(OutgoingPacket, Token);
                 Interlocked.Decrement(ref mBacklog);
             });
         }
@@ -24,6 +29,10 @@ namespace AdHocMAC.Nodes.MAC
         public int BacklogCount()
         {
             return mBacklog;
+        }
+
+        public void RemoveFromBacklog(int To, int Seq)
+        {
         }
 
         public PacketType OnReceive(Packet IncomingPacket)
