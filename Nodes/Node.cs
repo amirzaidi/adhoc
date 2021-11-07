@@ -24,6 +24,8 @@ namespace AdHocMAC.Nodes
         private readonly IMACProtocol<Packet> mMACProtocol;
         private readonly Random mRNG;
 
+        private readonly double mMsgGenerationProb;
+
         private readonly BufferBlock<object> mEvents = new BufferBlock<object>();
         private int mSequenceNumber;
 
@@ -33,6 +35,10 @@ namespace AdHocMAC.Nodes
             mNodeCount = NodeCount;
             mMACProtocol = MACProtocol;
             mRNG = RNG;
+
+            mMsgGenerationProb = Configuration.POISSON_DIST.GetXForCumulativeProb(RNG.NextDouble()) / Configuration.POISSON_DIST_DIV;
+            // mMsgGenerationProb = Configuration.NODE_CHANCE_GEN_MSG;
+            // mMsgGenerationProb = Configuration.NODE_CHANCE_GEN_MSG * RNG.NextDouble();
         }
 
         /// <summary>
@@ -121,7 +127,7 @@ namespace AdHocMAC.Nodes
             {
                 // Nothing happened for a while, so lets execute the start of an algorithm.
                 // Basic logic: whenever there is no message in the queue, we send a new one.
-                if (mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < Configuration.NODE_CHANCE_GEN_MSG)
+                if (mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < mMsgGenerationProb)
                 {
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.

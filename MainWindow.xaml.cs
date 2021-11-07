@@ -43,8 +43,6 @@ namespace AdHocMAC
         // Determined by UI slider.
         private int mNodeCount;
 
-        private double mRange = 200.0;
-
         public MainWindow()
         {
             InitializeComponent();
@@ -62,7 +60,7 @@ namespace AdHocMAC
 
             var nodeVisualizerEvents = new NodeVisualizerEvents<INode<Packet>>(mNodeVisualizer);
 
-            mNetwork = new PhysicsNetwork<Packet>(nodeVisualizerEvents, mRange);
+            mNetwork = new PhysicsNetwork<Packet>(nodeVisualizerEvents, Configuration.PHYSICS_RANGE);
             mReset = new DuplicateRunDiscarder(Reset);
         }
 
@@ -129,7 +127,7 @@ namespace AdHocMAC
 
         private void Route_Click(object sender, RoutedEventArgs e)
         {
-            Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), mRange);
+            Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), Configuration.PHYSICS_RANGE);
         }
 
         private async void Log_Click(object sender, RoutedEventArgs e)

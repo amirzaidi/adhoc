@@ -23,9 +23,6 @@ namespace AdHocMAC.Simulation
 
         private readonly double mRange; // Range in Point3D euclidian units.
 
-        private double mTransmittedUnitsPerSecond = 256.0; // Characters sent per second.
-        private double mTravelDistancePerSecond = 2048.0; // Speed of light in this system.
-
         public PhysicsNetwork(INetworkEventLogger<INode<T>> Logger, double Range)
         {
             mLogger = Logger;
@@ -41,7 +38,7 @@ namespace AdHocMAC.Simulation
 
             CancellationToken CTOutgoing() => fromNodeState.PositionChangeCTS.Token;
 
-            var signalDuration = Length / mTransmittedUnitsPerSecond;
+            var signalDuration = Length / Configuration.TRANSMISSION_CHAR_PER_SECOND;
 
             // Start a stopwatch for accurate time measurement.
             var stopwatch = new Stopwatch();
@@ -93,7 +90,7 @@ namespace AdHocMAC.Simulation
                 var distance = Vector3D.Distance(FromNodeState.Position, ToNodeState.Position);
                 var inRange = distance <= mRange;
 
-                var signalStartTime = distance / mTravelDistancePerSecond;
+                var signalStartTime = distance / Configuration.TRANSMISSION_DIST_PER_SECOND;
                 var signalEndTime = signalStartTime + SignalDuration;
 
                 if (DEBUG) Debug.WriteLine($"{debugPrint}: Send Times [{signalStartTime}, {signalEndTime}]");
