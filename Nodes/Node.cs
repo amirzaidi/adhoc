@@ -15,7 +15,7 @@ namespace AdHocMAC.Nodes
     /// </summary>
     class Node : INode<Packet>
     {
-        private const bool DEBUG = false;
+        private const bool DEBUG = true;
 
         private readonly List<string> mPacketLog = new List<string>();
 
@@ -86,21 +86,24 @@ namespace AdHocMAC.Nodes
                 var packet = evReceived.IncomingPacket;
                 switch (mMACProtocol.OnReceive(packet))
                 {
-                    case PacketType.New:
+                    case PacketType.NewPacket:
                         // To-Do: What do we want to do with unseen packets, other than send an ACK?
-                        ReplyACK(packet, Token);
+                        EnqueueReplyACK(packet, Token);
                         if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
 
                         var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
                         log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
                         mPacketLog.Add(log);
                         break;
-                    case PacketType.Old:
+                    case PacketType.DuplicatePacket:
                         // Send another ACK for these.
-                        ReplyACK(packet, Token);
+                        EnqueueReplyACK(packet, Token);
                         if (DEBUG) Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
                         break;
-                    case PacketType.Control:
+                    case PacketType.Broadcast:
+                        if (DEBUG) Debug.WriteLine($"[B NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                        break;
+                    case PacketType.ACK:
                         // Successful packet.
                         if (DEBUG) Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
                         break;
@@ -130,13 +133,22 @@ namespace AdHocMAC.Nodes
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.
                     if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
-                    EnqueueSend((mId + 1) % mNodeCount, $"Hello World from {mId}!", Token);
+
+                    if (mRNG.NextDouble() < 0.1)
+                    {
+                        // Send a broadcast 10% of the time instead of a regular packet.
+                        EnqueueBroadcast($"Hello Everyone from {mId}!", Token);
+                    }
+                    else
+                    {
+                        EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
+                    }
                 }
             }
         }
 
         // Call this only from within the Loop().
-        private void EnqueueSend(int To, string Data, CancellationToken Token)
+        private void EnqueueSend(int To, object Data, CancellationToken Token)
         {
             EnqueueSend(new Packet
             {
@@ -163,7 +175,26 @@ namespace AdHocMAC.Nodes
         }
 
         // Call this only from within the Loop().
-        private void ReplyACK(Packet IncomingPacket, CancellationToken Token)
+        private void EnqueueBroadcast(object Data, CancellationToken Token)
+        {
+            var broadcast = new Packet
+            {
+                From = mId,
+                To = Packet.BROADCAST_TO_ID,
+                Seq = mSequenceNumber++,
+                Data = Data,
+                InitialUnixTimestamp = Timestamp.UnixMS(),
+            };
+
+            mMACProtocol.SendInBackground(
+                broadcast,
+                () => { },
+                Token
+            );
+        }
+
+        // Call this only from within the Loop().
+        private void EnqueueReplyACK(Packet IncomingPacket, CancellationToken Token)
         {
             var ACK = new Packet
             {
@@ -198,7 +229,7 @@ namespace AdHocMAC.Nodes
         public void OnReceiveSuccess(Packet IncomingPacket)
         {
             // if (DEBUG) Debug.WriteLine($"{mId}: PACKET [{IncomingPacket.From} -> {IncomingPacket.To}: {IncomingPacket.Data}]");
-            if (IncomingPacket.To == mId)
+            if (IncomingPacket.To == mId || IncomingPacket.To == Packet.BROADCAST_TO_ID)
             {
                 mEvents.Post(new PacketReceived { IncomingPacket = IncomingPacket });
             }

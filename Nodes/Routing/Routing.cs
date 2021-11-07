@@ -21,8 +21,8 @@ namespace AdHocMAC.Nodes.Routing
             public static int GetLength(Packet Packet)
             {
                 var byteCount = 3 * sizeof(int)
-                    + 1 * sizeof(bool)
-                    + Packet.Data.Length;
+                    + 1 * sizeof(bool);
+                    //+ Packet.Data.Length;
 
                 return byteCount;
             }

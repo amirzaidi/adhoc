@@ -37,7 +37,9 @@ namespace AdHocMAC.Nodes.MAC
 
         public PacketType OnReceive(Packet IncomingPacket)
         {
-            return PacketType.New;
+            return IncomingPacket.To == Packet.BROADCAST_TO_ID
+                ? PacketType.Broadcast
+                : PacketType.NewPacket;
         }
 
         public void OnChannelBusy()

@@ -2,8 +2,9 @@
 {
     enum PacketType
     {
-        New,
-        Old,
-        Control
+        NewPacket,
+        DuplicatePacket,
+        Broadcast,
+        ACK,
     }
 }

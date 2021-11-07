@@ -34,25 +34,26 @@ namespace AdHocMAC.Nodes.MAC
 
         public void SendInBackground(Packet OutgoingPacket, Action OnTimeout, CancellationToken Token)
         {
-            if (!OutgoingPacket.ACK)
+            var useCA = !OutgoingPacket.ACK && OutgoingPacket.To != Packet.BROADCAST_TO_ID;
+            if (useCA)
             {
                 mCA.CreatePacketTimer(OutgoingPacket.To, OutgoingPacket.Seq);
             }
 
             mSend = mSend.ContinueWith(async _ =>
             {
-                if (!OutgoingPacket.ACK) // Regular packet.
+                if (useCA) // Regular packet.
                 {
                     await SendWhenChannelFree(OutgoingPacket, Token);
                     _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, Token));
                 }
-                else if (IsChannelBusy()) // ACK but channel is occupied.
+                else if (IsChannelBusy()) // Broadcast/ACK but channel is occupied.
                 {
-                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] ACK Cannot Be Sent");
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] Broadcast/ACK Cannot Be Sent");
                 }
-                else // ACK and channel is free.
+                else // Broadcast/ACK and channel is free.
                 {
-                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] ACK Sent");
+                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] Broadcast/ACK Sent");
                     await mSendAction(OutgoingPacket, Token);
                 }
             });
@@ -72,15 +73,21 @@ namespace AdHocMAC.Nodes.MAC
 
         public PacketType OnReceive(Packet IncomingPacket)
         {
+            if (IncomingPacket.To == Packet.BROADCAST_TO_ID)
+            {
+                // Do not handle broadcasts.
+                return PacketType.Broadcast;
+            }
+
             if (IncomingPacket.ACK)
             {
                 mCA.CancelPacketTimer(IncomingPacket.From, IncomingPacket.Seq);
-                return PacketType.Control;
+                return PacketType.ACK;
             }
 
             return mCA.TryAddUniquePacketId(IncomingPacket.From, IncomingPacket.Seq)
-                ? PacketType.New
-                : PacketType.Old;
+                ? PacketType.NewPacket
+                : PacketType.DuplicatePacket;
         }
 
         // To-Do: Maybe combine OnChannelBusy and OnChannelFree into one method.

@@ -1,13 +1,13 @@
-﻿using System;
-
-namespace AdHocMAC.Nodes
+﻿namespace AdHocMAC.Nodes
 {
     struct Packet
     {
+        public const int BROADCAST_TO_ID = -1;
+
         // We need a sequence number to check ACKs.
         public int From, To, Seq;
         public bool ACK;
-        public string Data;
+        public object Data;
 
         // Only for logging.
         public long InitialUnixTimestamp;
@@ -16,8 +16,12 @@ namespace AdHocMAC.Nodes
         public static int GetLength(Packet Packet)
         {
             var byteCount = 3 * sizeof(int)
-                + 1 * sizeof(bool)
-                + Packet.Data.Length;
+                + 1 * sizeof(PacketType);
+
+            if (Packet.Data is string dataStr)
+            {
+                byteCount += dataStr.Length;
+            }
 
             return byteCount;
         }
