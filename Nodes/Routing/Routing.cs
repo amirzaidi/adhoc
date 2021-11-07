@@ -3,11 +3,38 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace AdHocMAC.Nodes.Routing
 {
     class Routing
     {
+        struct RoutePacket
+        {
+            // We need a sequence number to check ACKs.
+            public int From, To, Seq;
+            public bool ACK;
+            public string Data;
+            public List<int> travelledNodes;
+            public RouteType type;
+
+            public static int GetLength(Packet Packet)
+            {
+                var byteCount = 3 * sizeof(int)
+                    + 1 * sizeof(bool)
+                    + Packet.Data.Length;
+
+                return byteCount;
+            }
+        }
+
+        enum RouteType 
+        {
+            RREQ,
+            RREP,
+            Data
+        };
+
         public static void GetShortestPath(List<Node> nodes, Func<Node, Vector3D> getPosition, double range)
         {
             var directionalPaths = new List<(Node, Node, double)>();
@@ -100,5 +127,112 @@ namespace AdHocMAC.Nodes.Routing
 
             return array;
         }
+
+        public static void InitiateRouting(List<Node> nodes, Func<Node, Vector3D> getPosition, double range)
+        {
+            int source = 0;
+            int destination = 6;
+            int seqNumber = 1;
+            List<int> travelledPath = new List<int>();
+
+            //Create the RReq packet as soon as the source and destination is known
+
+            var rReqPacket = new RoutePacket();
+            rReqPacket.From = source;
+            rReqPacket.To = destination;
+            travelledPath.Add(source);
+            rReqPacket.travelledNodes =travelledPath;
+            rReqPacket.Seq = seqNumber;
+            rReqPacket.type = RouteType.RREQ;
+
+            //Get the adjectnt nodes
+            var connectedNodes =GetConnectedNodes(nodes, 0, getPosition, range);
+
+            //Initiate tranfer
+            Parallel.ForEach(connectedNodes, node =>
+            {
+                //Send with the specified protocol
+            });
+        }
+
+        private static List<int> GetConnectedNodes(List<Node> nodes, int sourceNode, Func<Node, Vector3D> getPosition, double range)
+        {
+            var directionalPaths = new List<(Node, Node, double)>();
+            var connectedNodes = new List<int>();
+            Node n1 = nodes.FirstOrDefault(x => x.GetID().Equals(sourceNode));
+            foreach (var n2 in nodes)
+            {
+                if (n1 != n2)
+                {
+                    var distance = Vector3D.Distance(getPosition(n1), getPosition(n2));
+                    if (distance <= range)
+                    {
+                        connectedNodes.Add(n2.GetID());
+                    }
+                }
+            }
+            return connectedNodes;
+        }
+
+        private static List<int> GetConnectedNodes()
+        {
+            return new List<int>();
+        }
+
+        private static void onReceive(Node node, RoutePacket packet)
+        {
+            //First check if it is the destination
+            RouteType type = packet.type;
+            var newPacket = new RoutePacket();
+            if (node.GetID() == packet.To)
+            {
+                if (type == RouteType.RREQ)
+                {
+                    //Create the RREP 
+                    newPacket.From = node.GetID();
+                    newPacket.To = packet.travelledNodes[0];
+                    newPacket.Seq = packet.Seq;
+                    newPacket.type = RouteType.RREP;
+                }
+
+                else if (type == RouteType.RREP)
+                {
+                    //Send the data
+                    newPacket.From = node.GetID();
+                    newPacket.To = packet.travelledNodes[packet.travelledNodes.Count-1];
+                    newPacket.Seq = packet.Seq;
+                    newPacket.type = RouteType.Data;
+                }
+
+            }
+            else
+            {
+                if (type == RouteType.RREQ)
+                {
+                    //Add self to the travelled path
+                    newPacket.travelledNodes.Add(node.GetID());
+
+                    //Get the adjecent node and transmit
+                    var connectedNodes = GetConnectedNodes();
+                    foreach (var connectedNode in connectedNodes)
+                    {
+                        if (!packet.travelledNodes.Contains(connectedNode))
+                        { 
+                            //forward the packet
+                        }
+                    }
+                    
+                }
+                else if (type == RouteType.RREP)
+                {
+                    //Send the data
+                    newPacket.From = node.GetID();
+                    newPacket.To = packet.travelledNodes[0];
+                    newPacket.Seq = packet.Seq;
+                    newPacket.type = RouteType.Data;
+                }
+            }
+        }
+
     }
 }
