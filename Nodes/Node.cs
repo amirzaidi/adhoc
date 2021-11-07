@@ -129,7 +129,7 @@ namespace AdHocMAC.Nodes
             else if (Event is FailedTransmission evTimeout)
             {
                 var packet = evTimeout.OutgoingPacket;
-                if (packet.RetryAttempts >= 15)
+                if (packet.RetryAttempts > Configuration.NODE_PACKET_RETRY_ATTEMPTS)
                 {
                     mMACProtocol.RemoveFromBacklog(packet.To, packet.Seq);
                     if (DEBUG) Debug.WriteLine($"[S DROP] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");

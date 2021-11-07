@@ -142,8 +142,8 @@ namespace AdHocMAC.GUI
                 int elementId = mGetNodeID(node);
                 var transform = new TranslateTransform
                 {
-                    X = GRID_MARGIN + GRID_PANEL_SIZE * (elementId % ROW_PANEL_COUNT),
-                    Y = GRID_MARGIN + GRID_PANEL_SIZE * (elementId / ROW_PANEL_COUNT),
+                    X = Configuration.LAYOUT_SAME_NODE_POSITION ? GRID_MARGIN : (GRID_MARGIN + GRID_PANEL_SIZE * (elementId % ROW_PANEL_COUNT)),
+                    Y = Configuration.LAYOUT_SAME_NODE_POSITION ? GRID_MARGIN : (GRID_MARGIN + GRID_PANEL_SIZE * (elementId / ROW_PANEL_COUNT)),
                 };
                 panel.RenderTransform = transform;
                 var c = UIElementCreator.CreateCircle(
@@ -250,6 +250,12 @@ namespace AdHocMAC.GUI
 
         public void UpdateBlobPositioning(Line Line, Ellipse Blob1, Ellipse Blob2)
         {
+            // Ignore this edge case.
+            if (Line.X1 == Line.X2 && Line.Y1 == Line.Y2)
+            {
+                return;
+            }
+
             const double NODE_CIRCLE_RADIUS = NODE_CIRCLE_DIAMETER / 2.0;
             const double BLOB_CIRCLE_RADIUS = BLOB_CIRCLE_DIAMETER / 2.0;
 

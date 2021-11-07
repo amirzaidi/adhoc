@@ -8,6 +8,8 @@ namespace AdHocMAC
 {
     class Configuration
     {
+        public const bool LAYOUT_SAME_NODE_POSITION = false;
+
         public enum MACProtocol
         {
             Aloha,
@@ -48,6 +50,7 @@ namespace AdHocMAC
 
         public const int NODE_WAKEUP_TIME_MS = (int)(0.5 * SLOT_SECONDS * 1000); // Half a slot.
         public const double NODE_CHANCE_GEN_MSG = 0.005;
+        public const int NODE_PACKET_RETRY_ATTEMPTS = 16;
 
         public static double CreateMessageChance(double RandDouble)
         {
