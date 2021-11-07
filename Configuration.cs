@@ -18,7 +18,7 @@ namespace AdHocMAC
         public const MACProtocol MAC = MACProtocol.CSMAPP;
         public const int MinSlotDelayUpperbound = 4;
         public const int MaxSlotDelayUpperbound = 32;
-        public const double PPersistency = 1.0;
+        public const double PPersistency = 0.25;
 
         public const double SLOT_SECONDS = 0.1;
         public const double SIFS_SECONDS = 0.3;

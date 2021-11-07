@@ -42,19 +42,25 @@ namespace AdHocMAC.Nodes.MAC
 
             mSend = mSend.ContinueWith(async _ =>
             {
-                if (useCA) // Regular packet.
+                if (OutgoingPacket.ACK)
+                {
+                    if (IsChannelBusy()) // Broadcast/ACK but channel is occupied.
+                    {
+                        if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] ACK Cannot Be Sent");
+                    }
+                    else
+                    {
+                        if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] ACK Sent");
+                        await mSendAction(OutgoingPacket, Token);
+                    }
+                }
+                else
                 {
                     await SendWhenChannelFree(OutgoingPacket, Token);
-                    _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, () => mIsChannelBusy, Token));
-                }
-                else if (IsChannelBusy()) // Broadcast/ACK but channel is occupied.
-                {
-                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] Broadcast/ACK Cannot Be Sent");
-                }
-                else // Broadcast/ACK and channel is free.
-                {
-                    if (DEBUG) Debug.WriteLine($"[{OutgoingPacket.From}] Broadcast/ACK Sent");
-                    await mSendAction(OutgoingPacket, Token);
+                    if (useCA)
+                    {
+                        _ = Task.Run(async () => await mCA.WaitPacketTimer(OutgoingPacket.To, OutgoingPacket.Seq, OnTimeout, () => mIsChannelBusy, Token));
+                    }
                 }
             });
         }
