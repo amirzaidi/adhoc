@@ -62,6 +62,20 @@ namespace AdHocMAC
 
             mNetwork = new PhysicsNetwork<Packet>(nodeVisualizerEvents, Configuration.PHYSICS_RANGE);
             mReset = new DuplicateRunDiscarder(Reset);
+
+            NodeCount.Value = Configuration.NODE_COUNT;
+
+            if (Configuration.AUTO_RUN_SHUT_DOWN_AFTER != -1)
+            {
+                SynchronizationContext.Current.Post(async _ =>
+                {
+                    await mReset.Execute();
+                    mNodes[0].StartRouteRequest(mNodes.Count - 1);
+                    await Task.Delay(Configuration.AUTO_RUN_SHUT_DOWN_AFTER);
+                    await SaveLogs();
+                    Application.Current.Shutdown();
+                }, null);
+            }
         }
 
         private async void StartButton_Click(object sender, RoutedEventArgs e)
@@ -139,6 +153,11 @@ namespace AdHocMAC
 
         private async void Log_Click(object sender, RoutedEventArgs e)
         {
+            await SaveLogs();
+        }
+
+        private async Task SaveLogs()
+        {
             var lines = new List<string>
             {
                 "Type, SenderID, ReceiverID, SeqNum, AttemptNumber, TimeInitialSend, TimeSentOrReceived"
@@ -147,8 +166,8 @@ namespace AdHocMAC
             foreach (var node in mNodes)
             {
                 lines.AddRange(node.GetLog());
-            } 
- 
+            }
+
             await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}.txt", lines);
         }
     }

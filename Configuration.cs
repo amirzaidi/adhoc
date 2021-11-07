@@ -8,19 +8,22 @@ namespace AdHocMAC
 {
     class Configuration
     {
+        public static int AUTO_RUN_SHUT_DOWN_AFTER = -1;
+        public static int NODE_COUNT = 2;
+
         public const bool LAYOUT_SAME_NODE_POSITION = false;
 
         public enum MACProtocol
         {
-            Aloha,
-            CSMANPP,
-            CSMAPP,
+            Aloha = 0,
+            CSMANPP = 1,
+            CSMAPP = 2,
         }
 
-        public const MACProtocol MAC = MACProtocol.CSMAPP;
+        public static MACProtocol MAC = MACProtocol.CSMAPP;
         public const int MinSlotDelayUpperbound = 4;
         public const int MaxSlotDelayUpperbound = 32;
-        public const double PPersistency = 0.25;
+        public static double PPersistency = 0.25;
 
         public const double SLOT_SECONDS = 0.1;
         public const double SIFS_SECONDS = 0.3;
@@ -80,6 +83,7 @@ namespace AdHocMAC
                 case MACProtocol.CSMAPP:
                     return new CarrierSensingPPersistent(new Random(Seed));
             }
+            return null;
         }
 
         public static IBackoff CreateBackoff()
