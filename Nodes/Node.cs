@@ -53,7 +53,7 @@ namespace AdHocMAC.Nodes
                     var CT = CancellationTokenSource.CreateLinkedTokenSource(Token, wakeupCTS.Token).Token;
 
                     // We cancel this if something happened.
-                    _ = Task.Delay(mRNG.Next(100, 500), CT).ContinueWith(_ =>
+                    _ = Task.Delay(Configuration.NODE_WAKEUP_TIME_MS, CT).ContinueWith(_ =>
                     {
                         if (!CT.IsCancellationRequested)
                         {
@@ -121,7 +121,7 @@ namespace AdHocMAC.Nodes
             {
                 // Nothing happened for a while, so lets execute the start of an algorithm.
                 // Basic logic: whenever there is no message in the queue, we send a new one.
-                if (mMACProtocol.BacklogCount() == 0)
+                if (mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < Configuration.NODE_CHANCE_GEN_MSG)
                 {
                     // Send a Hello World packet to the node with ID+1.
                     // The basic node code does not bother with how sending is handled.

@@ -33,7 +33,8 @@ namespace AdHocMAC
         public const int CA_MIN_TIMEOUT_SLOTS = 1;
         public const int CA_MAX_TIMEOUT_SLOTS = 32;
 
-        public bool CA_BEB_DIDD = true;
+        public const int NODE_WAKEUP_TIME_MS = (int)(0.5 * SLOT_SECONDS * 1000); // Half a slot.
+        public const double NODE_CHANCE_GEN_MSG = 0.001;
 
         public static IMACProtocol<Packet> CreateMACProtocol(int Seed)
         {
