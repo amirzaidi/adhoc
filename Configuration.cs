@@ -18,9 +18,9 @@ namespace AdHocMAC
         public const MACProtocol MAC = MACProtocol.CSMAPP;
         public const int MinSlotDelayUpperbound = 4;
         public const int MaxSlotDelayUpperbound = 32;
-        public const double PPersistency = 0.4;
+        public const double PPersistency = 1.0; // default for 802.11 DCF standard.
 
-        public const double SLOT_SECONDS = 20 * 0.1;
+        public const double SLOT_SECONDS = 0.1;
         // public const double SIFS_SECONDS = 0.05;
 
         public enum CABackoff
@@ -33,7 +33,7 @@ namespace AdHocMAC
         public const CABackoff CA_BACKOFF = CABackoff.Fib;
         public const int CA_MIN_TIMEOUT_SLOTS = 1;
         public const int CA_MAX_TIMEOUT_SLOTS = 32;
-
+        
         public enum MessageChance
         {
             Uniform,
@@ -41,13 +41,14 @@ namespace AdHocMAC
             Poisson,
         }
 
-        public const MessageChance MESSAGE_CHANCE_TYPE = MessageChance.Poisson;
+        public const MessageChance MESSAGE_CHANCE_TYPE = MessageChance.ScaledUniform;
 
-        public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(3.0);
-        public const double POISSON_DIST_DIV = 10.0;
+        public const double POISSON_PARAMETER = 5.0;
+        public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(POISSON_PARAMETER);
+        public const double TRAFFIC_LOAD = 0.1; // This should be a number in [0,1], used both for Poisson and uniform traffic
 
         public const int NODE_WAKEUP_TIME_MS = (int)(0.5 * SLOT_SECONDS * 1000); // Half a slot.
-        public const double NODE_CHANCE_GEN_MSG = 0.005;
+        public const double NODE_CHANCE_GEN_MSG = TRAFFIC_LOAD;
 
         public static double CreateMessageChance(double RandDouble)
         {
@@ -58,7 +59,7 @@ namespace AdHocMAC
                 case MessageChance.ScaledUniform:
                     return NODE_CHANCE_GEN_MSG * RandDouble;
                 case MessageChance.Poisson:
-                    return POISSON_DIST.GetXForCumulativeProb(RandDouble) / POISSON_DIST_DIV;
+                    return POISSON_DIST.GetXForCumulativeProb(RandDouble)*TRAFFIC_LOAD;
             }
         }
 
