@@ -8,6 +8,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -156,9 +157,9 @@ namespace AdHocMAC
             foreach (var node in mNodes)
             {
                 lines.AddRange(node.GetLog());
-            }
-
-            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString().Replace("\\", "-").Replace(":", "-")}.txt", lines);
+            } 
+ 
+            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}.txt", lines);
         }
     }
 }
