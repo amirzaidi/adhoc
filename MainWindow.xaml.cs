@@ -128,9 +128,12 @@ namespace AdHocMAC
         private void Route_Click(object sender, RoutedEventArgs e)
         {
             // Routing.GetShortestPath(mNodes, n => mNetwork.GetNodePosition(n), Configuration.PHYSICS_RANGE);
-            if (mNodes.Count > 0)
+            if (int.TryParse(RouteStart.Text, out var nodeStart) && int.TryParse(RouteEnd.Text, out var nodeEnd))
             {
-                mNodes[0].StartRouteRequest(mNodes.Count - 1);
+                if (nodeStart >= 0 && nodeEnd >= 0 && mNodes.Count > nodeStart && mNodes.Count > nodeEnd && nodeStart != nodeEnd)
+                {
+                    mNodes[nodeStart].StartRouteRequest(nodeEnd);
+                }
             }
         }
 

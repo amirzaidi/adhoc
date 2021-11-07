@@ -147,6 +147,16 @@ namespace AdHocMAC.Nodes
             }
             else if (Event is WakeupEvent)
             {
+                /*
+                // Send a routed packet from id 0 to id (nodecount - 1).
+                if (mId == 0 && mRouter.UndeliveredMessages() == 0 && ++mEmptyWakeups == 16) // Wait 16 slots.
+                {
+                    mEmptyWakeups = 0;
+                    if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
+                    mRouter.FindRouteThenSend(mNodeCount - 1, $"Hello Node Far Away!", Token);
+                }
+                */
+
                 // Nothing happened for a while, so lets execute the start of an algorithm.
                 // Basic logic: whenever there is no message in the queue, we send a new one.
                 if (mMACProtocol.BacklogCount() == 0 && mRNG.NextDouble() < mMsgGenerationProb)
@@ -156,16 +166,6 @@ namespace AdHocMAC.Nodes
                     // The basic node code does not bother with how sending is handled.
                     if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello Node from {mId}!", Token);
-                    */
-
-                    /*
-                    // Send a routed packet from id 0 to id (nodecount - 1).
-                    if (mId == 0 && mRouter.UndeliveredMessages() == 0 && ++mEmptyWakeups == 16) // Wait 16 slots.
-                    {
-                        mEmptyWakeups = 0;
-                        if (DEBUG) Debug.WriteLine($"[ROUTE NEW] {mId}: CREATING ROUTE");
-                        mRouter.FindRouteThenSend(mNodeCount - 1, $"Hello Node Far Away!", Token);
-                    }
                     */
 
                     /*
