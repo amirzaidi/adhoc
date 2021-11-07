@@ -40,55 +40,79 @@ namespace AdHocMAC.Nodes
         /// </summary>
         public async Task Loop(CancellationToken Token)
         {
+            // To-Do: Implement Routing Algorithm In Here.
+            CancellationTokenSource wakeupCTS = null;
             while (!Token.IsCancellationRequested)
             {
-                // Handle all incoming messages and timeouts here.
-                while (mEvents.Count > 0)
+                // Every time the event queue becomes empty, we wake up the node to do
+                // its own logic sometime in the future.
+                if (mEvents.Count == 0)
                 {
-                    var ev = await mEvents.ReceiveAsync(Token);
-                    if (ev is PacketReceived evReceived)
-                    {
-                        var packet = evReceived.IncomingPacket;
-                        switch (mMACProtocol.OnReceive(packet))
-                        {
-                            case PacketType.New:
-                                // To-Do: What do we want to do with unseen packets, other than send an ACK?
-                                ReplyACK(packet, Token);
-                                if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                    // Add some randomness for timing.
+                    wakeupCTS = new CancellationTokenSource();
+                    var CT = CancellationTokenSource.CreateLinkedTokenSource(Token, wakeupCTS.Token).Token;
 
-                                var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
-                                log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
-                                mPacketLog.Add(log);
-                                break;
-                            case PacketType.Old:
-                                // Send another ACK for these.
-                                ReplyACK(packet, Token);
-                                if (DEBUG) Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
-                                break;
-                            case PacketType.Control:
-                                // Successful packet.
-                                if (DEBUG) Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
-                                break;
-                        }
-                    }
-                    else if (ev is FailedTransmission evTimeout)
+                    // We cancel this if something happened.
+                    _ = Task.Delay(mRNG.Next(100, 500), CT).ContinueWith(_ =>
                     {
-                        var packet = evTimeout.OutgoingPacket;
-                        if (packet.RetryAttempts >= 15)
+                        if (!CT.IsCancellationRequested)
                         {
-                            if (DEBUG) Debug.WriteLine($"[S DROP] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                            mEvents.Post(new WakeupEvent());
                         }
-                        else
-                        {
-                            packet.RetryAttempts += 1;
-                            EnqueueSend(packet, Token);
-                            if (DEBUG) Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
-                        }
-                    }
+                    });
                 }
 
-                // To-Do: Implement Routing Algorithm Here.
+                var ev = await mEvents.ReceiveAsync(Token);
+                wakeupCTS?.Cancel(); // Cancel the wakeup event.
+                await OnEvent(ev, Token);
+            }
+        }
 
+        private async Task OnEvent(object Event, CancellationToken Token)
+        {
+            // Handle all incoming messages and timeouts here.
+            if (Event is PacketReceived evReceived)
+            {
+                var packet = evReceived.IncomingPacket;
+                switch (mMACProtocol.OnReceive(packet))
+                {
+                    case PacketType.New:
+                        // To-Do: What do we want to do with unseen packets, other than send an ACK?
+                        ReplyACK(packet, Token);
+                        if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+
+                        var log = $"R, {packet.From}, {packet.To}, {packet.Seq}";
+                        log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
+                        mPacketLog.Add(log);
+                        break;
+                    case PacketType.Old:
+                        // Send another ACK for these.
+                        ReplyACK(packet, Token);
+                        if (DEBUG) Debug.WriteLine($"[R OLD] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
+                        break;
+                    case PacketType.Control:
+                        // Successful packet.
+                        if (DEBUG) Debug.WriteLine($"[R ACK] {mId}: [{packet.From}, {packet.Seq}]");
+                        break;
+                }
+            }
+            else if (Event is FailedTransmission evTimeout)
+            {
+                var packet = evTimeout.OutgoingPacket;
+                if (packet.RetryAttempts >= 15)
+                {
+                    if (DEBUG) Debug.WriteLine($"[S DROP] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                }
+                else
+                {
+                    packet.RetryAttempts += 1;
+                    EnqueueSend(packet, Token);
+                    if (DEBUG) Debug.WriteLine($"[S RETRY] {mId}: [{packet.To}, {packet.Seq}: {packet.Data}]");
+                }
+            }
+            else if (Event is WakeupEvent)
+            {
+                // Nothing happened for a while, so lets execute the start of an algorithm.
                 // Basic logic: whenever there is no message in the queue, we send a new one.
                 if (mMACProtocol.BacklogCount() == 0)
                 {
@@ -97,8 +121,6 @@ namespace AdHocMAC.Nodes
                     if (DEBUG) Debug.WriteLine($"[S NEW] {mId}: Sequence {mSequenceNumber}");
                     EnqueueSend((mId + 1) % mNodeCount, $"Hello World from {mId}!", Token);
                 }
-
-                await Task.Delay(mRNG.Next(10, 20), Token).IgnoreExceptions(); // Add some randomness for timing.
             }
         }
 
@@ -185,6 +207,10 @@ namespace AdHocMAC.Nodes
         class FailedTransmission
         {
             public Packet OutgoingPacket;
+        }
+
+        class WakeupEvent
+        {
         }
     }
 }
