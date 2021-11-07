@@ -43,8 +43,8 @@ namespace AdHocMAC
 
         public const MessageChance MESSAGE_CHANCE_TYPE = MessageChance.Poisson;
 
-        public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(2.0);
-        public const double POISSON_DIST_DIV = 200.0;
+        public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(3.0);
+        public const double POISSON_DIST_DIV = 10.0;
 
         public const int NODE_WAKEUP_TIME_MS = (int)(0.5 * SLOT_SECONDS * 1000); // Half a slot.
         public const double NODE_CHANCE_GEN_MSG = 0.005;
@@ -62,7 +62,7 @@ namespace AdHocMAC
             }
         }
 
-        public const double PHYSICS_RANGE = 200.0;
+        public const double PHYSICS_RANGE = 80.0; // for path set range 80.0
         public const double TRANSMISSION_CHAR_PER_SECOND = 256.0; // Characters sent per second.
         public const double TRANSMISSION_DIST_PER_SECOND = 2048.0; // Speed of light in this system.
 
