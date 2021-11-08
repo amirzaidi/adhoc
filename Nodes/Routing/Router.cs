@@ -43,7 +43,8 @@ namespace AdHocMAC.Nodes.Routing
                     if (control.Reply)
                     {
                         if (DEBUG) Debug.WriteLine($"RREP {mId} END: {string.Join("|", control.Nodes)}");
-                        Log($"RREP -> Data {mId}: {string.Join("|", control.Nodes)}");
+                        Log($"RRREP, {control.From}, {mId}, {string.Join("|", control.Nodes)}, {control.Seq}");
+                        Log($"SData, {mId}, {control.From}, {string.Join("|", control.Nodes)}, -1");
 
                         // To-Do: We now know the route, what do we want to do?
                         var tuple = (control.From, control.Seq);
@@ -68,7 +69,8 @@ namespace AdHocMAC.Nodes.Routing
 
                         // Send back to the node before us, so (len - 2).
                         if (DEBUG) Debug.WriteLine($"RREQ {mId} END: {string.Join("|", control.Nodes)}");
-                        Log($"RREQ -> RREP At Destination {mId}: {string.Join("|", control.Nodes)}");
+                        Log($"RRREQ, {control.From}, {mId}, {string.Join("|", control.Nodes)}, {control.Seq}");
+                        Log($"SRREP, {mId}, {control.From}, {string.Join("|", control.Nodes)}, {control.Seq}");
 
                         mSendLink(control.Nodes[^2], control, Token);
                     }
@@ -91,7 +93,7 @@ namespace AdHocMAC.Nodes.Routing
                 if (data.To == mId) // If we are the destination.
                 {
                     if (DEBUG) Debug.WriteLine($"ROUTED DATA {mId} END: {string.Join("|", data.Nodes)}");
-                    Log($"Routed Data Arrived At Destination {mId}: {string.Join("|", data.Nodes)}");
+                    Log($"RData, {data.From}, {mId}, {string.Join("|", data.Nodes)}, -1");
 
                     // Deliver it to event loop.
                     mOnDeliver(data.From, data.Data);
@@ -112,7 +114,7 @@ namespace AdHocMAC.Nodes.Routing
                 mToSend[(To, seq)] = Data;
 
                 int[] nodes = { mId };
-                Log($"RREQ Started At {mId} to {To}: {string.Join("|", nodes)}");
+                Log($"SRREQ, {mId}, {To}, {string.Join("|", nodes)}, {seq}");
 
                 mSendBroadcast(new RoutingPacketControl
                 {
@@ -132,7 +134,7 @@ namespace AdHocMAC.Nodes.Routing
         public void ForwardData(RoutingPacketData Data, CancellationToken Token)
         {
             if (DEBUG) Debug.WriteLine($"Forward Data {Data.From}, {mId}, {Data.To} [{string.Join("|", Data.Nodes)}]");
-            Log($"Routed Data Forwarded At {mId}: {string.Join("|", Data.Nodes)}");
+            Log($"FData, {Data.From}, {Data.To}, {string.Join("|", Data.Nodes)}, -1");
 
             int ourPosition = Array.IndexOf(Data.Nodes, mId);
             int nextNode = Data.Nodes[ourPosition + 1];
@@ -145,7 +147,7 @@ namespace AdHocMAC.Nodes.Routing
             int nextNode = Control.Nodes[ourPosition - 1];
 
             if (DEBUG) Debug.WriteLine($"Forward RREP {Control.From}, {mId}, {Control.To} [{string.Join("|", Control.Nodes)}]");
-            Log($"RREP Forwarded At {mId}: {string.Join("|", Control.Nodes)}");
+            Log($"FRREP, {Control.From}, {Control.To}, {string.Join("|", Control.Nodes)}, {Control.Seq}");
 
             mSendLink(nextNode, Control, Token);
         }
@@ -157,7 +159,7 @@ namespace AdHocMAC.Nodes.Routing
                 Control.Nodes = AddIdToNodeArray(Control.Nodes); // Since this is a struct, the original packet is not modified.
 
                 if (DEBUG) Debug.WriteLine($"Forward RREQ {Control.From}, {mId}, {Control.To} [{string.Join("|", Control.Nodes)}]");
-                Log($"RREQ Forwarded At {mId} to {Control.To}: {string.Join("|", Control.Nodes)}");
+                Log($"FRREQ, {Control.From}, {Control.To}, {string.Join("|", Control.Nodes)}, {Control.Seq}");
 
                 mSendBroadcast(Control, Token);
             }

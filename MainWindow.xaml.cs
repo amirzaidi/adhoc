@@ -182,9 +182,16 @@ namespace AdHocMAC
                 // Length of the path found in RREP.
                 var routinglines = new List<string>
                 {
-                    "EVENT_UNIX_TIMESTAMP_MS, ???",
+                    "NodeID, Timestamp, PPersistency, Type, SourceID, DestinationID, Route, SeqNum",
                 };
-                routinglines.AddRange(mNodes.Select(x => x.GetRoutingLog()).SelectMany(x => x).OrderBy(x => x.Item1).Select(x => $"{x.Item1}, {x.Item2}"));
+
+                routinglines.AddRange(
+                    mNodes.Select(x => (x.GetID(), x.GetRoutingLog())) // Logs with ID.
+                        .SelectMany(x => x.Item2.Select(y => (x.Item1, y.Item1, y.Item2))) // Add ID to each log entry then merge logs.
+                        .OrderBy(x => x.Item2) // Sort by time.
+                        .Select(x => $"{x.Item1}, {x.Item2}, {Configuration.PPersistency}, {x.Item3}") // Format into strings.
+                );
+
                 await File.WriteAllLinesAsync($"routinglog-{name}.txt", routinglines);
             }
 
