@@ -10,6 +10,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -90,17 +92,12 @@ namespace AdHocMAC
         {
             if (mCTS != null)
             {
-                mLogHandler.OnDebug($"Stopping {mNodeThreads.Count} nodes");
+                mLogHandler.OnDebug($"Stopping {mNodes.Count} nodes");
                 mCTS.Cancel();
 
                 foreach (var nodeThread in mNodeThreads)
                 {
                     await nodeThread;
-                }
-
-                foreach (var node in mNodes)
-                {
-                    node.GetLog().Clear();
                 }
             }
 
@@ -110,7 +107,7 @@ namespace AdHocMAC
             mNodeCount = (int) NodeCount.Value;
             mLogHandler.OnDebug($"Creating {mNodeCount} new nodes");
 
-            var nodes = new List<Node>();
+            mNodes.Clear();
 
             mCTS = new CancellationTokenSource();
             for (int i = 0; i < mNodeCount; i++)
@@ -122,22 +119,15 @@ namespace AdHocMAC
                 protocol.SetSendAction(async (p, ct) => await mNetwork.StartTransmission(node, p, Packet.GetLength(p), ct));
 
                 // Add newly created node.
-                nodes.Add(node);
+                mNodes.Add(node);
             }
 
             // Show everything in the UI.
-            mNodeVisualizer.ResetNodes(new List<INode<Packet>>(nodes));
+            mNodeVisualizer.ResetNodes(new List<INode<Packet>>(mNodes));
 
             // Start all logic loops when they are added to the UI.
-            foreach (var node in nodes)
-            {
-                // Use Task.Run to force each loop onto a separate execution context.
-                mNodeThreads.Add(Task.Run(() => node.Loop(mCTS.Token)));
-            }
-
-            // To-Do: Remove double list.
-            mNodes.Clear();
-            mNodes.AddRange(nodes);
+            // Use Task.Run to force each loop onto a separate execution context.
+            mNodes.ForEach(node => mNodeThreads.Add(Task.Run(() => node.Loop(mCTS.Token))));
 
             mLogHandler.OnDebug($"Started {mNodeThreads.Count} nodes");
         }
@@ -161,27 +151,51 @@ namespace AdHocMAC
 
         private async Task SaveLogs()
         {
+            Debug.WriteLine("SaveLogs Start");
+
+            var enUS = CultureInfo.CreateSpecificCulture("en-US");
+            var deDE = CultureInfo.CreateSpecificCulture("de-DE");
+
+            var time = DateTime.Now.ToString("s", deDE).Replace(":", "-");
+            var name = new StringBuilder()
+                .Append(time)
+                .Append("-SimTime-")
+                .Append(Configuration.AUTO_RUN_SHUT_DOWN_AFTER)
+                .Append("-n-")
+                .Append(mNodeCount)
+                .Append("-BO-")
+                .Append(Configuration.CA_BACKOFF)
+                .Append("-FC-")
+                .Append(Configuration.AUTO_RUN_FULLY_CONNECTED)
+                .Append("-MCT-")
+                .Append(Configuration.MESSAGE_CHANCE_TYPE)
+                .Append("-PoisP-")
+                .Append(Configuration.AUTO_RUN_POISSON_PARAMETER.ToString("N4", enUS))
+                .Append("-Traf-")
+                .Append(Configuration.AUTO_RUN_TRAFFIC.ToString("N4", enUS))
+                .ToString();
 
             Debug.Write("Savelogs started");
+            if (!Configuration.AUTO_RUN_PACKETS_ENABLED)
+            {
+                // RREQ and RREP at Source and Dest.
+                // Length of the path found in RREP.
+                var routinglines = new List<string>
+                {
+                    "EVENT_UNIX_TIMESTAMP_MS, ???",
+                };
+                routinglines.AddRange(mNodes.Select(x => x.GetRoutingLog()).SelectMany(x => x).OrderBy(x => x.Item1).Select(x => $"{x.Item1}, {x.Item2}"));
+                await File.WriteAllLinesAsync($"routinglog-{name}.txt", routinglines);
+            }
 
             var lines = new List<string>
             {
                 "FullyConnected,BackoffAlg,NodeCount,Traffic_Type,Traffic_parameter,Poisson_parameter,Type,SenderID,ReceiverID,SeqNum,AttemptNumber,TimeInitialSend,TimeSentOrReceived"
             };
+            lines.AddRange(mNodes.Select(x => x.GetLog()).SelectMany(x => x));
+            await File.WriteAllLinesAsync($"log-{name}.txt", lines);
 
-            Debug.Write("LogVariable created");
-
-            foreach (var node in mNodes)
-            {
-                lines.AddRange(node.GetLog());
-            }
-
-            Debug.Write("Getlog started");
-
-            NumberFormatInfo nfi = new CultureInfo("en-US", false).NumberFormat;
-            nfi.NumberDecimalDigits = 7;
-            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}-SimTime-{Configuration.AUTO_RUN_SHUT_DOWN_AFTER}-n-{mNodeCount}-BO-{Configuration.CA_BACKOFF}-FC-{Configuration.AUTO_RUN_FULLY_CONNECTED}-MCT-{Configuration.MESSAGE_CHANCE_TYPE}-PoisP-{Configuration.AUTO_RUN_POISSON_PARAMETER.ToString("N4", CultureInfo.CreateSpecificCulture("en-US"))}-Traf-{Configuration.AUTO_RUN_TRAFFIC.ToString("N4", CultureInfo.CreateSpecificCulture("en-US"))}.txt", lines);
-            Debug.Write("WriteAllLines awaited.");
+            Debug.WriteLine("SaveLogs End");
         }
     }
 }

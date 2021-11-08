@@ -301,6 +301,8 @@ namespace AdHocMAC.Nodes
 
         public List<string> GetLog() => mPacketLog;
 
+        public List<(long, string)> GetRoutingLog() => mRouter.GetLog();
+
         private class PacketReceived
         {
             public Packet IncomingPacket;

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AdHocMAC.Utility;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
@@ -11,6 +12,7 @@ namespace AdHocMAC.Nodes.Routing
 
         private readonly RoutingCache mRoutingCache = new RoutingCache();
         private readonly Dictionary<(int, int), string> mToSend = new Dictionary<(int, int), string>();
+        private readonly List<(long, string)> mLog = new List<(long, string)>();
 
         private readonly int mId;
         private readonly Action<int, object, CancellationToken> mSendLink;
@@ -41,6 +43,7 @@ namespace AdHocMAC.Nodes.Routing
                     if (control.Reply)
                     {
                         if (DEBUG) Debug.WriteLine($"RREP {mId} END: {string.Join("|", control.Nodes)}");
+                        Log($"RREP -> Data {mId}: {string.Join("|", control.Nodes)}");
 
                         // To-Do: We now know the route, what do we want to do?
                         var tuple = (control.From, control.Seq);
@@ -65,6 +68,8 @@ namespace AdHocMAC.Nodes.Routing
 
                         // Send back to the node before us, so (len - 2).
                         if (DEBUG) Debug.WriteLine($"RREQ {mId} END: {string.Join("|", control.Nodes)}");
+                        Log($"RREQ -> RREP At Destination {mId}: {string.Join("|", control.Nodes)}");
+
                         mSendLink(control.Nodes[^2], control, Token);
                     }
                 }
@@ -85,14 +90,15 @@ namespace AdHocMAC.Nodes.Routing
             {
                 if (data.To == mId) // If we are the destination.
                 {
+                    if (DEBUG) Debug.WriteLine($"ROUTED DATA {mId} END: {string.Join("|", data.Nodes)}");
+                    Log($"Routed Data Arrived At Destination {mId}: {string.Join("|", data.Nodes)}");
+
                     // Deliver it to event loop.
                     mOnDeliver(data.From, data.Data);
-                    if (DEBUG) Debug.WriteLine($"ROUTED DATA {mId} END: {string.Join("|", data.Nodes)}");
                 }
                 else
                 {
                     ForwardData(data, Token);
-                    if (DEBUG) Debug.WriteLine($"ROUTED DATA {mId}: {string.Join("|", data.Nodes)}");
                 }
             }
         }
@@ -106,6 +112,8 @@ namespace AdHocMAC.Nodes.Routing
                 mToSend[(To, seq)] = Data;
 
                 int[] nodes = { mId };
+                Log($"RREQ Started At {mId} to {To}: {string.Join("|", nodes)}");
+
                 mSendBroadcast(new RoutingPacketControl
                 {
                     From = mId,
@@ -124,6 +132,8 @@ namespace AdHocMAC.Nodes.Routing
         public void ForwardData(RoutingPacketData Data, CancellationToken Token)
         {
             if (DEBUG) Debug.WriteLine($"Forward Data {Data.From}, {mId}, {Data.To} [{string.Join("|", Data.Nodes)}]");
+            Log($"Routed Data Forwarded At {mId}: {string.Join("|", Data.Nodes)}");
+
             int ourPosition = Array.IndexOf(Data.Nodes, mId);
             int nextNode = Data.Nodes[ourPosition + 1];
             mSendLink(nextNode, Data, Token);
@@ -133,7 +143,10 @@ namespace AdHocMAC.Nodes.Routing
         {
             int ourPosition = Array.IndexOf(Control.Nodes, mId);
             int nextNode = Control.Nodes[ourPosition - 1];
+
             if (DEBUG) Debug.WriteLine($"Forward RREP {Control.From}, {mId}, {Control.To} [{string.Join("|", Control.Nodes)}]");
+            Log($"RREP Forwarded At {mId}: {string.Join("|", Control.Nodes)}");
+
             mSendLink(nextNode, Control, Token);
         }
 
@@ -142,7 +155,10 @@ namespace AdHocMAC.Nodes.Routing
             if (mRoutingCache.TryUpdateRREQLastBroadcastSeq(Control.From, Control.To, Control.Seq))
             {
                 Control.Nodes = AddIdToNodeArray(Control.Nodes); // Since this is a struct, the original packet is not modified.
+
                 if (DEBUG) Debug.WriteLine($"Forward RREQ {Control.From}, {mId}, {Control.To} [{string.Join("|", Control.Nodes)}]");
+                Log($"RREQ Forwarded At {mId} to {Control.To}: {string.Join("|", Control.Nodes)}");
+
                 mSendBroadcast(Control, Token);
             }
         }
@@ -153,6 +169,13 @@ namespace AdHocMAC.Nodes.Routing
             Array.Copy(Nodes, newNodes, Nodes.Length);
             newNodes[Nodes.Length] = mId;
             return newNodes;
+        }
+
+        public List<(long, string)> GetLog() => mLog;
+
+        private void Log(string Log)
+        {
+            mLog.Add((Timestamp.UnixMS(), Log));
         }
     }
 }

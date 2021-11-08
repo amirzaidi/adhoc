@@ -9,7 +9,7 @@ namespace AdHocMAC
     class Configuration
     {
         public static int AUTO_RUN_SHUT_DOWN_AFTER = -1;
-        public static bool AUTO_RUN_PACKETS_ENABLED = true;
+        public static bool AUTO_RUN_PACKETS_ENABLED = false;
         public static int AUTO_RUN_NODE_COUNT = 2;
         public static bool AUTO_RUN_FULLY_CONNECTED = false;
         public static double AUTO_RUN_TRAFFIC = 0.1; // This should be a number in [0,1], used both for Poisson and uniform traffic
