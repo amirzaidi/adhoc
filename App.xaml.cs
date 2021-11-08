@@ -11,7 +11,7 @@ namespace AdHocMAC
 
         private void Application_Startup(object sender, StartupEventArgs e)
         {
-            if (e.Args.Length == 8)
+            if (e.Args.Length == 9)
             {
                 int arg = 0;
 
@@ -31,6 +31,8 @@ namespace AdHocMAC
                 // Configuration.AUTO_RUN_POISSON_PARAMETER = double.Parse(e.Args[arg++],,CultureInfo.CreateSpecificCulture("en-US"));
 
                 Configuration.AUTO_RUN_POISSON_PARAMETER = float.Parse(e.Args[arg++], NumberStyles.Float, nfi);
+
+                Configuration.PPersistency = float.Parse(e.Args[arg++], NumberStyles.Float, nfi);
 
             }
 
