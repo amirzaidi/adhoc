@@ -161,17 +161,25 @@ namespace AdHocMAC
 
         private async Task SaveLogs()
         {
+
+            Debug.Write("Savelogs started");
+
             var lines = new List<string>
             {
-                "Traffic_Type, Traffic_parameter, Poisson_parameter, Type, SenderID, ReceiverID, SeqNum, AttemptNumber, TimeInitialSend, TimeSentOrReceived"
+                "FullyConnected,BackoffAlg,NodeCount,Traffic_Type,Traffic_parameter,Poisson_parameter,Type,SenderID,ReceiverID,SeqNum,AttemptNumber,TimeInitialSend,TimeSentOrReceived"
             };
+
+            Debug.Write("LogVariable created");
 
             foreach (var node in mNodes)
             {
                 lines.AddRange(node.GetLog());
             }
 
+            Debug.Write("Getlog started");
+
             await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}.txt", lines);
+            Debug.Write("WriteAllLines awaited.");
         }
     }
 }

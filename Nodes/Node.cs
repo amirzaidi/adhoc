@@ -101,7 +101,7 @@ namespace AdHocMAC.Nodes
                         if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
                         EnqueueReplyACK(packet, Token);
 
-                        string log = $"{Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.AUTO_RUN_POISSON_PARAMETER}, R, {packet.From}, {packet.To}, {packet.Seq}";
+                        string log = $"{Configuration.AUTO_RUN_FULLY_CONNECTED}, {Configuration.CA_BACKOFF}, {mNodeCount}, {Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.AUTO_RUN_POISSON_PARAMETER}, R, {packet.From}, {packet.To}, {packet.Seq}";
                         log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
                         mPacketLog.Add(log);
 
@@ -201,14 +201,15 @@ namespace AdHocMAC.Nodes
                 Seq = mSequenceNumber++,
                 Data = Data,
                 InitialUnixTimestamp = Timestamp.UnixMS(),
-                RGB = (0, 127, 255),
+                RGB = (0, 127, 255), 
             }, Token);
+
         }
 
         // Call this only from within the Loop().
         private void EnqueueSend(Packet OutgoingPacket, CancellationToken Token)
         {
-            var log = $"{Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.AUTO_RUN_POISSON_PARAMETER}, S, {OutgoingPacket.From}, {OutgoingPacket.To}, {OutgoingPacket.Seq}";
+            var log = $"{Configuration.AUTO_RUN_FULLY_CONNECTED}, {Configuration.CA_BACKOFF}, {mNodeCount}, {Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.AUTO_RUN_POISSON_PARAMETER}, S, {OutgoingPacket.From}, {OutgoingPacket.To}, {OutgoingPacket.Seq}";
             log += $", {OutgoingPacket.RetryAttempts}, {OutgoingPacket.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
 
             mPacketLog.Add(log);
