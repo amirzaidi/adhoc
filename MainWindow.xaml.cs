@@ -173,6 +173,8 @@ namespace AdHocMAC
                 .Append(Configuration.AUTO_RUN_POISSON_PARAMETER.ToString("N4", enUS))
                 .Append("-Traf-")
                 .Append(Configuration.AUTO_RUN_TRAFFIC.ToString("N4", enUS))
+                .Append("-PP-")
+                .Append(Configuration.PPersistency.ToString("N4", enUS))
                 .ToString();
 
             Debug.Write("Savelogs started");
