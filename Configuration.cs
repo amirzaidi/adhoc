@@ -12,6 +12,8 @@ namespace AdHocMAC
         public static bool AUTO_RUN_PACKETS_ENABLED = false;
         public static int AUTO_RUN_NODE_COUNT = 2;
         public static bool AUTO_RUN_FULLY_CONNECTED = false;
+        public static double AUTO_RUN_TRAFFIC = 0.1; // This should be a number in [0,1], used both for Poisson and uniform traffic
+        public static double AUTO_RUN_POISSON_PARAMETER = 5;
 
         public enum MACProtocol
         {
@@ -19,7 +21,7 @@ namespace AdHocMAC
             CSMANPP = 1,
             CSMAPP = 2,
         }
-
+    
         public static MACProtocol MAC = MACProtocol.CSMAPP;
         public const int MinSlotDelayUpperbound = 4;
         public const int MaxSlotDelayUpperbound = 32;
@@ -31,27 +33,24 @@ namespace AdHocMAC
 
         public enum CABackoff
         {
-            BEB,
-            DIDD,
-            Fib,
+            BEB = 'B',
+            DIDD = 'D',
+            Fib = 'F',
         }
-
-        public const CABackoff CA_BACKOFF = CABackoff.Fib;
+        
+        public static CABackoff CA_BACKOFF = CABackoff.BEB;
         public const int CA_MIN_TIMEOUT_SLOTS = 1;
         public const int CA_MAX_TIMEOUT_SLOTS = 32;
 
         public enum MessageChance
         {
-            Uniform,
-            ScaledUniform,
-            Poisson,
+            Uniform = 'u',
+            ScaledUniform = 's',
+            Poisson = 'p',
         }
 
-        public const MessageChance MESSAGE_CHANCE_TYPE = MessageChance.ScaledUniform;
-
-        public const double POISSON_PARAMETER = 5.0;
-        public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(POISSON_PARAMETER);
-        public const double TRAFFIC_LOAD = 0.1; // This should be a number in [0,1], used both for Poisson and uniform traffic
+        public static MessageChance MESSAGE_CHANCE_TYPE = MessageChance.Uniform;
+        public static readonly PoissonDistribution POISSON_DIST = new PoissonDistribution(AUTO_RUN_POISSON_PARAMETER);
 
         public const int NODE_WAKEUP_TIME_MS = (int)(0.5 * SLOT_SECONDS * 1000); // Half a slot.
         public const int NODE_PACKET_RETRY_ATTEMPTS = 16;
@@ -61,12 +60,13 @@ namespace AdHocMAC
             switch (MESSAGE_CHANCE_TYPE)
             {
                 case MessageChance.Uniform:
-                    return TRAFFIC_LOAD;
+                    return AUTO_RUN_TRAFFIC;
                 case MessageChance.ScaledUniform:
-                    return TRAFFIC_LOAD * RandDouble;
+                    return AUTO_RUN_TRAFFIC * RandDouble;
                 case MessageChance.Poisson:
-                    return POISSON_DIST.GetXForCumulativeProb(RandDouble) * TRAFFIC_LOAD;
+                    return POISSON_DIST.GetXForCumulativeProb(RandDouble) * AUTO_RUN_TRAFFIC;
             }
+            return 0.0;
         }
 
         public const double PHYSICS_RANGE = 80.0; // for path set range 80.0
@@ -98,6 +98,7 @@ namespace AdHocMAC
                 case CABackoff.Fib:
                     return new Fibonacci(CA_MAX_TIMEOUT_SLOTS);
             }
+            return null;
         }
     }
 }

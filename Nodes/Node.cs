@@ -101,7 +101,7 @@ namespace AdHocMAC.Nodes
                         if (DEBUG) Debug.WriteLine($"[R NEW] {mId}: [{packet.From}, {packet.Seq}: {packet.Data}]");
                         EnqueueReplyACK(packet, Token);
 
-                        string log = $"{Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.TRAFFIC_LOAD.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.POISSON_PARAMETER}, R, {packet.From}, {packet.To}, {packet.Seq}";
+                        string log = $"{Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.AUTO_RUN_POISSON_PARAMETER}, R, {packet.From}, {packet.To}, {packet.Seq}";
                         log += $", {packet.RetryAttempts}, {packet.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
                         mPacketLog.Add(log);
 
@@ -208,7 +208,7 @@ namespace AdHocMAC.Nodes
         // Call this only from within the Loop().
         private void EnqueueSend(Packet OutgoingPacket, CancellationToken Token)
         {
-            var log = $"{Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.TRAFFIC_LOAD.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.POISSON_PARAMETER}, S, {OutgoingPacket.From}, {OutgoingPacket.To}, {OutgoingPacket.Seq}";
+            var log = $"{Configuration.MESSAGE_CHANCE_TYPE}, {Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}, {Configuration.AUTO_RUN_POISSON_PARAMETER}, S, {OutgoingPacket.From}, {OutgoingPacket.To}, {OutgoingPacket.Seq}";
             log += $", {OutgoingPacket.RetryAttempts}, {OutgoingPacket.InitialUnixTimestamp}, {Timestamp.UnixMS()}";
 
             mPacketLog.Add(log);
