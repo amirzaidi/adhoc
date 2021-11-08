@@ -178,7 +178,7 @@ namespace AdHocMAC
 
             Debug.Write("Getlog started");
 
-            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}.txt", lines);
+            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}-n-{mNodeCount}-BO-{Configuration.CA_BACKOFF}-FC-{Configuration.AUTO_RUN_FULLY_CONNECTED}-MCT-{Configuration.MESSAGE_CHANCE_TYPE}-PoisP-{Configuration.AUTO_RUN_POISSON_PARAMETER}-Traf-{Configuration.AUTO_RUN_TRAFFIC.ToString(CultureInfo.CreateSpecificCulture("en-US"))}.txt", lines);
             Debug.Write("WriteAllLines awaited.");
         }
     }
