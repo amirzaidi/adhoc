@@ -25,7 +25,7 @@ namespace AdHocMAC
     public partial class MainWindow : Window
     {
         private const int TOP_LEVEL_SEED = 1234567890;
-        private readonly Random mSeedGenerator = new Random(TOP_LEVEL_SEED);
+        private readonly Random mSeedGenerator = new Random(/* TOP_LEVEL_SEED */);
 
         // Fields to handle showing what is happening to the user.
         private readonly LogHandler mLogHandler = new LogHandler();
@@ -192,7 +192,7 @@ namespace AdHocMAC
                         .Select(x => $"{x.Item1}, {x.Item2}, {Configuration.PPersistency}, {x.Item3}") // Format into strings.
                 );
 
-                await File.WriteAllLinesAsync($"routinglog-{name}.txt", routinglines);
+                await File.WriteAllLinesAsync($"routinglog-{name}-{DateTime.Now.Ticks}.txt", routinglines);
             }
 
             var lines = new List<string>
@@ -200,7 +200,7 @@ namespace AdHocMAC
                 "FullyConnected,BackoffAlg,NodeCount,Traffic_Type,Traffic_parameter,Poisson_parameter,Type,SenderID,ReceiverID,SeqNum,AttemptNumber,TimeInitialSend,TimeSentOrReceived"
             };
             lines.AddRange(mNodes.Select(x => x.GetLog()).SelectMany(x => x));
-            await File.WriteAllLinesAsync($"log-{name}.txt", lines);
+            await File.WriteAllLinesAsync($"log-{name}-{DateTime.Now.Ticks}.txt", lines);
 
             Debug.WriteLine("SaveLogs End");
         }
