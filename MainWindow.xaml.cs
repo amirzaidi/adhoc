@@ -178,7 +178,9 @@ namespace AdHocMAC
 
             Debug.Write("Getlog started");
 
-            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}-n-{mNodeCount}-BO-{Configuration.CA_BACKOFF}-FC-{Configuration.AUTO_RUN_FULLY_CONNECTED}-MCT-{Configuration.MESSAGE_CHANCE_TYPE}-PoisP-{Configuration.AUTO_RUN_POISSON_PARAMETER.ToString("F", CultureInfo.CreateSpecificCulture("en-US"))}-Traf-{Configuration.AUTO_RUN_TRAFFIC.ToString("F", CultureInfo.CreateSpecificCulture("en-US"))}.txt", lines);
+            NumberFormatInfo nfi = new CultureInfo("en-US", false).NumberFormat;
+            nfi.NumberDecimalDigits = 7;
+            await File.WriteAllLinesAsync($"log-{DateTime.Now.ToString("s", CultureInfo.CreateSpecificCulture("de-DE")).Replace(":", "-")}-n-{mNodeCount}-BO-{Configuration.CA_BACKOFF}-FC-{Configuration.AUTO_RUN_FULLY_CONNECTED}-MCT-{Configuration.MESSAGE_CHANCE_TYPE}-PoisP-{Configuration.AUTO_RUN_POISSON_PARAMETER.ToString("N4", CultureInfo.CreateSpecificCulture("en-US"))}-Traf-{Configuration.AUTO_RUN_TRAFFIC.ToString("N4", CultureInfo.CreateSpecificCulture("en-US"))}.txt", lines);
             Debug.Write("WriteAllLines awaited.");
         }
     }
