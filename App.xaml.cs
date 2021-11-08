@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.Globalization;
+using System.Windows;
 
 namespace AdHocMAC
 {
@@ -13,14 +14,16 @@ namespace AdHocMAC
             {
                 int arg = 0;
 
+
+
                 Configuration.AUTO_RUN_SHUT_DOWN_AFTER = int.Parse(e.Args[arg++]);
                 Configuration.AUTO_RUN_PACKETS_ENABLED = bool.Parse(e.Args[arg++]);
                 Configuration.AUTO_RUN_NODE_COUNT = int.Parse(e.Args[arg++]);
                 Configuration.AUTO_RUN_FULLY_CONNECTED = bool.Parse(e.Args[arg++]);
                 Configuration.MESSAGE_CHANCE_TYPE = (Configuration.MessageChance) char.Parse(e.Args[arg++]);
-                Configuration.AUTO_RUN_TRAFFIC = double.Parse(e.Args[arg++]); // This should be a number in [0,1], used both for Poisson and uniform traffic
+                Configuration.AUTO_RUN_TRAFFIC = double.Parse(e.Args[arg++], NumberStyles.Float, CultureInfo.CreateSpecificCulture("en-US")); // This should be a number in [0,1], used both for Poisson and uniform traffic
                 Configuration.CA_BACKOFF = (Configuration.CABackoff) char.Parse(e.Args[arg++]);
-                Configuration.AUTO_RUN_POISSON_PARAMETER = double.Parse(e.Args[arg++]);
+                Configuration.AUTO_RUN_POISSON_PARAMETER = double.Parse(e.Args[arg++], NumberStyles.Float, CultureInfo.CreateSpecificCulture("en-US"));
 
             }
 
